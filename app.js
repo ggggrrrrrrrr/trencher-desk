@@ -1,21 +1,35 @@
 (function () {
   const TOKEN_KEY = "desk_app_token";
   const DATA_KEY = "desk_data_path";
+  const STALE_AFTER_MS = 15 * 60 * 1000;
+
+  function extractDataPath(raw) {
+    const s = String(raw || "").trim();
+    if (!s) return "";
+    const fromPair = s.match(/(?:^|[?#&])d=([^&#\s]+)/);
+    if (fromPair && fromPair[1]) {
+      try { return decodeURIComponent(fromPair[1]); } catch (e) { return fromPair[1]; }
+    }
+    // A pasted bare token is accepted, but never a short string.
+    if (/^[A-Za-z0-9_-]{32,}$/.test(s)) return s;
+    return "";
+  }
 
   function captureFromHash() {
     const hash = window.location.hash || "";
-    const params = hash.replace(/^#/, "").split("&").filter(Boolean);
-    const keep = [];
+    const search = window.location.search || "";
+    const params = (hash.replace(/^#/, "") + "&" + search.replace(/^\?/, "")).split("&").filter(Boolean);
+    const keepHash = [];
     for (const p of params) {
       if (p.startsWith("t=")) {
         try { localStorage.setItem(TOKEN_KEY, decodeURIComponent(p.slice(2))); } catch (e) {}
       } else if (p.startsWith("d=")) {
         try { localStorage.setItem(DATA_KEY, decodeURIComponent(p.slice(2))); } catch (e) {}
-      } else {
-        keep.push(p);
+      } else if (p) {
+        if (hash.indexOf(p) !== -1) keepHash.push(p);
       }
     }
-    const next = window.location.pathname + window.location.search + (keep.length ? "#" + keep.join("&") : "");
+    const next = window.location.pathname + window.location.search + (keepHash.length ? "#" + keepHash.join("&") : "");
     history.replaceState(null, "", next);
   }
 
@@ -27,8 +41,23 @@
     try { return localStorage.getItem(DATA_KEY) || ""; } catch (e) { return ""; }
   }
 
+  function saveDataPath(value) {
+    const d = extractDataPath(value) || (value && /^[A-Za-z0-9_-]{32,}$/.test(value) ? value : "");
+    if (!d) return false;
+    try { localStorage.setItem(DATA_KEY, d); } catch (e) { return false; }
+    return true;
+  }
+
   function pageBase() {
-    return new URL(".", window.location.href);
+    // Avoid new URL(".", href) dropping /trencher-desk when the path has no trailing slash.
+    const loc = window.location;
+    let path = loc.pathname || "/";
+    if (!path.endsWith("/")) {
+      const last = path.split("/").pop() || "";
+      if (last.includes(".")) path = path.slice(0, path.lastIndexOf("/") + 1);
+      else path += "/";
+    }
+    return new URL(path, loc.origin);
   }
 
   function dataUrl(file) {
@@ -63,6 +92,32 @@
     if (!msg) { el.classList.add("hidden"); el.textContent = ""; return; }
     el.textContent = msg;
     el.classList.remove("hidden");
+  }
+
+  function showLogin(needed) {
+    const panel = document.getElementById("login-panel");
+    if (!panel) return;
+    panel.classList.toggle("hidden", !needed);
+  }
+
+  function formatWhen(iso) {
+    if (!iso) return "unknown time";
+    const t = Date.parse(iso);
+    if (!Number.isFinite(t)) return iso;
+    const dt = new Date(t);
+    const time = new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit", minute: "2-digit", timeZone: "Europe/Amsterdam", hour12: false
+    }).format(dt);
+    const mins = Math.max(0, Math.round((Date.now() - t) / 60000));
+    if (mins < 1) return time + " CET (just now)";
+    if (mins === 1) return time + " CET (1 min ago)";
+    return time + " CET (" + mins + " min ago)";
+  }
+
+  function isStale(iso) {
+    const t = Date.parse(iso || "");
+    if (!Number.isFinite(t)) return false;
+    return (Date.now() - t) > STALE_AFTER_MS;
   }
 
   let range = "LIVE";
@@ -142,36 +197,53 @@
 
   async function api(path) {
     const r = await fetch(path, { headers: headers(), cache: "no-store" });
-    if (r.status === 401) throw new Error("unauthorized");
-    if (!r.ok) throw new Error("http " + r.status);
+    if (r.status === 401) throw Object.assign(new Error("unauthorized"), { status: 401 });
+    if (!r.ok) throw Object.assign(new Error("http " + r.status), { status: r.status });
     return r.json();
   }
 
   async function loadJson(url) {
     const r = await fetch(url, { headers: { "Accept": "application/json" }, cache: "no-store" });
-    if (!r.ok) throw new Error("http " + r.status);
+    if (!r.ok) throw Object.assign(new Error("http " + r.status), { status: r.status });
     return r.json();
   }
 
   async function refresh() {
     try {
       const d = dataPath();
+      if (!d && !token()) {
+        showLogin(true);
+        showError("No login saved. Paste the login link from Telegram.");
+        return;
+      }
       if (d) {
-        const [s, c, a] = await Promise.all([
-          loadJson(dataUrl("state.json")),
-          loadJson(dataUrl("chart.json")),
-          loadJson(dataUrl("activity.json")).catch(() => ({ rows: [] })),
-        ]);
+        showLogin(false);
+        let s, c, a;
+        try {
+          [s, c, a] = await Promise.all([
+            loadJson(dataUrl("state.json")),
+            loadJson(dataUrl("chart.json")),
+            loadJson(dataUrl("activity.json")).catch(() => ({ rows: [] })),
+          ]);
+        } catch (err) {
+          if (err && err.status === 404) {
+            showLogin(true);
+            showError("Data not found (404). Paste the login link from Telegram again.");
+            return;
+          }
+          throw err;
+        }
         renderState(s);
         renderChart(c);
         renderActivity((a && a.rows) || []);
-        showError("");
+        if (isStale(s && s.updatedAt)) {
+          showError("Data is stale · last update " + formatWhen(s.updatedAt));
+        } else {
+          showError("");
+        }
         return;
       }
-      if (!token()) {
-        showError("Desk offline · open the URL with the login fragment from Telegram");
-        return;
-      }
+      showLogin(false);
       const [s, c, a] = await Promise.all([
         api("/api/state"),
         api("/api/chart?range=" + encodeURIComponent(range)),
@@ -182,8 +254,9 @@
       renderActivity((a && a.rows) || []);
       showError("");
     } catch (e) {
-      const when = lastState && lastState.updatedAt ? lastState.updatedAt : "never";
-      showError("Desk offline · retrying in 5s · last update " + when);
+      const when = lastState && lastState.updatedAt ? lastState.updatedAt : null;
+      if (when) showError("Can't reach desk data · last update " + formatWhen(when) + ". Retrying in 5s.");
+      else showError("Can't reach desk data. Retrying in 5s.");
     }
   }
 
@@ -193,8 +266,10 @@
       let a;
       if (d) {
         a = await loadJson(dataUrl("account.json"));
-      } else {
+      } else if (token()) {
         a = await api("/api/account");
+      } else {
+        return;
       }
       const prof = document.getElementById("acct-profile");
       const inv = document.getElementById("acct-invite");
@@ -204,6 +279,21 @@
       document.getElementById("acct-mode").textContent = a.mode;
       document.getElementById("acct-stack").textContent = money(a.stack);
     } catch (e) {}
+  }
+
+  function onSaveLogin() {
+    const input = document.getElementById("login-link");
+    const raw = input ? input.value : "";
+    if (!saveDataPath(raw)) {
+      showError("That did not look like a login link. Paste the full Telegram link.");
+      showLogin(true);
+      return;
+    }
+    if (input) input.value = "";
+    showLogin(false);
+    showError("");
+    refresh();
+    loadAccount();
   }
 
   captureFromHash();
@@ -224,9 +314,20 @@
     document.querySelectorAll("#ranges button").forEach((x) => x.classList.toggle("on", x === b));
     refresh();
   });
+  const saveBtn = document.getElementById("login-save");
+  const loginInput = document.getElementById("login-link");
+  if (saveBtn) saveBtn.addEventListener("click", onSaveLogin);
+  if (loginInput) {
+    loginInput.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        onSaveLogin();
+      }
+    });
+  }
   window.addEventListener("resize", () => { if (lastChart) renderChart(lastChart); });
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register(new URL("sw.js", pageBase()).href).catch(() => {});
+    navigator.serviceWorker.register(new URL("sw.js?v=3", pageBase()).href).catch(() => {});
   }
   refresh();
   setInterval(refresh, 5000);

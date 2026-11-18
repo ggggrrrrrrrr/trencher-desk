@@ -9,12 +9,20 @@
   <meta name="apple-mobile-web-app-title" content="Grok Bot">
   <meta name="theme-color" content="#000000">
   <title>Grok Bot</title>
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json?v=3">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="app.css?v=3">
 </head>
 <body>
   <div id="error" class="error hidden" role="status"></div>
+  <section id="login-panel" class="login-panel hidden">
+    <label for="login-link">Paste the login link from Telegram</label>
+    <p class="login-hint">The Home Screen app does not keep the Safari login. Paste the link once.</p>
+    <div class="login-row">
+      <input id="login-link" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste the Telegram link here">
+      <button type="button" id="login-save">Save</button>
+    </div>
+  </section>
   <header class="navbar">
     <button class="avatar" id="btn-account" aria-label="Account" type="button"></button>
     <div class="brand">Grok Bot ›</div>
@@ -83,7 +91,7 @@
     <button type="button" data-tab="account">Account</button>
   </nav>
 
-  <script src="chart.js"></script>
-  <script src="app.js"></script>
+  <script src="chart.js?v=3"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
