@@ -104,6 +104,28 @@
     ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
     ctx.shadowColor = "rgba(" + rgb + ",.45)"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
 
+    // faint y labels: real min / max of the series (not the padded range)
+    const sMin = Math.min.apply(null, pts.map((p) => p.v)), sMax = Math.max.apply(null, pts.map((p) => p.v));
+    if (opts && opts.fmtY && pts.length > 1) {
+      ctx.font = "500 9.5px " + (getComputedStyle(document.body).fontFamily || "monospace");
+      ctx.fillStyle = "rgba(138,148,143,.55)"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      const yMax = Math.max(padT + 6, yOf(sMax)), yMin = Math.min(padT + ch - 6, yOf(sMin));
+      ctx.fillText(opts.fmtY(sMax), padL + cw - 2, yMax - 8 < padT ? yMax + 8 : yMax - 8);
+      if (Math.abs(yMin - yMax) > 18) ctx.fillText(opts.fmtY(sMin), padL + cw - 2, yMin + 8 > padT + ch ? yMin - 8 : yMin + 8);
+    }
+    canvas.__geo = { pts: pts, xy: xy, col: col, w: w, h: h, padT: padT, ch: ch };
+
+    const scrub = opts && opts.scrub != null ? opts.scrub : null;
+    if (scrub != null && xy[scrub]) {
+      const sx = xy[scrub][0], sy = xy[scrub][1];
+      ctx.strokeStyle = "rgba(232,236,233,.45)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(Math.round(sx) + .5, padT - 6); ctx.lineTo(Math.round(sx) + .5, padT + ch + padB); ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx, sy, 9, 0, Math.PI * 2); ctx.fillStyle = "rgba(" + rgb + ",.22)"; ctx.fill();
+      ctx.beginPath(); ctx.arc(sx, sy, 4.5, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = "#ffffff"; ctx.stroke();
+      return;
+    }
+
     const [lx, ly] = xy[xy.length - 1];
     const pulse = opts && opts.pulse != null ? opts.pulse : 0;
     if (pulse > 0) { ctx.beginPath(); ctx.arc(lx, ly, 5 + pulse * 7, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255," + (0.18 * (1 - pulse)) + ")"; ctx.fill(); }
@@ -112,11 +134,18 @@
   }
 
   // Animated home chart: tweens the latest value when a new point arrives.
-  function drawHomeChart(canvas, points, startValue) {
+  function drawHomeChart(canvas, points, startValue, fmtY) {
     if (!canvas) return;
     const pts = bucket(parse(points), 140);
     const st = canvas.__st || (canvas.__st = {});
     const ref = startValue != null ? Number(startValue) : null;
+    st.pts = pts; st.ref = ref; st.fmtY = fmtY;
+    if (st.scrub != null) { // finger is down: hold the frame, just redraw under the finger
+      st.scrub = Math.min(st.scrub, pts.length - 1);
+      drawArea(canvas, pts, ref, { scrub: st.scrub, fmtY: fmtY });
+      st.shown = pts.length ? pts[pts.length - 1].v : null;
+      return;
+    }
     const last = pts.length ? pts[pts.length - 1].v : null;
     const from = st.shown != null ? st.shown : last;
     if (st.raf) cancelAnimationFrame(st.raf);
@@ -129,11 +158,27 @@
         p = pts.slice(); const v = from + (last - from) * e;
         p[p.length - 1] = { t: p[p.length - 1].t, v: v }; st.shown = v;
       } else st.shown = last;
-      drawArea(canvas, p, ref, { pulse: changed ? k : 0 });
+      drawArea(canvas, p, ref, { pulse: changed ? k : 0, fmtY: fmtY });
       if (k < 1 && changed) st.raf = requestAnimationFrame(frame); else st.raf = null;
     }
     if (changed && document.visibilityState !== "hidden") st.raf = requestAnimationFrame(frame);
     else frame(t0 + dur);
+  }
+
+  // Scrub: index of the nearest point to x (CSS px), or null to release.
+  function scrubHomeChart(canvas, clientX) {
+    const st = canvas && canvas.__st;
+    if (!st || !st.pts || !st.pts.length) return null;
+    if (clientX == null) { st.scrub = null; drawArea(canvas, st.pts, st.ref, { fmtY: st.fmtY }); return null; }
+    const geo = canvas.__geo; if (!geo) return null;
+    const r = canvas.getBoundingClientRect(); const x = clientX - r.left;
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < geo.xy.length; i++) { const d = Math.abs(geo.xy[i][0] - x); if (d < bd) { bd = d; best = i; } }
+    if (st.raf) { cancelAnimationFrame(st.raf); st.raf = null; }
+    st.scrub = best;
+    drawArea(canvas, st.pts, st.ref, { scrub: best, fmtY: st.fmtY });
+    const p = st.pts[best];
+    return { index: best, t: p.t, v: p.v, x: geo.xy[best][0], y: geo.xy[best][1], col: geo.col, n: st.pts.length };
   }
 
   function drawPriceChart(canvas, points, entry) {
@@ -159,6 +204,8 @@
   }
 
   global.drawHomeChart = drawHomeChart;
+  global.scrubHomeChart = scrubHomeChart;
+  global.chartColor = function (canvas) { return canvas && canvas.__geo ? canvas.__geo.col : GREEN; };
   global.drawPriceChart = drawPriceChart;
   global.drawSpark = drawSpark;
 })(window);
