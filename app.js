@@ -2,6 +2,7 @@
   const TOKEN_KEY = "desk_app_token";
   const DATA_KEY = "desk_data_path";
   const STALE_AFTER_MS = 15 * 60 * 1000;
+  const AGENTS_FRESH_MS = 6 * 60 * 1000;
 
   function extractDataPath(raw) {
     const s = String(raw || "").trim();
@@ -134,17 +135,22 @@
     document.getElementById("multiplier").textContent = (Number(s.multiplier) || 0).toFixed(2) + "×";
     const badge = document.getElementById("paper-badge");
     badge.classList.toggle("hidden", s.mode !== "PAPER");
-    const running = (s.agents || []).filter((a) => a.status === "running").length;
+    const snapshotFresh = !!(s.updatedAt) && (Date.now() - Date.parse(s.updatedAt) <= AGENTS_FRESH_MS);
+    const agents = (s.agents || []).map((a) => {
+      const running = snapshotFresh && a.status === "running";
+      return Object.assign({}, a, { status: running ? "running" : "idle" });
+    });
+    const running = agents.filter((a) => a.status === "running").length;
     document.getElementById("agents-running").textContent = running + " running";
     const car = document.getElementById("agent-carousel");
-    car.innerHTML = (s.agents || []).map((a) => (
+    car.innerHTML = agents.map((a) => (
       '<article class="agent-card">' +
         '<h3><span class="dot"></span>' + a.name + '</h3>' +
         '<div class="sub">' + (a.subtitle || "") + '</div>' +
       '</article>'
     )).join("");
     const full = document.getElementById("agents-full");
-    full.innerHTML = (s.agents || []).map((a) => (
+    full.innerHTML = agents.map((a) => (
       '<div class="card"><div class="row"><span>' + a.name +
       '</span><strong>' + (a.status || "") + '</strong></div></div>'
     )).join("");
@@ -327,7 +333,7 @@
   }
   window.addEventListener("resize", () => { if (lastChart) renderChart(lastChart); });
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register(new URL("sw.js?v=3", pageBase()).href).catch(() => {});
+    navigator.serviceWorker.register(new URL("sw.js?v=4", pageBase()).href).catch(() => {});
   }
   refresh();
   setInterval(refresh, 5000);
