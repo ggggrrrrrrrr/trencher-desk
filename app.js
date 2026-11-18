@@ -536,6 +536,7 @@
         renderChart(c);
         renderActivity((a && a.rows) || []);
         renderPositions(p || { open: [], closed: [] });
+        if (!lastLiveAt) tickLivePrices();
         if (Date.now() - lastLiveAt < 15000 && Object.keys(lastLivePrices).length) {
           const eq = recomputeMtm(lastPositions, lastLivePrices);
           lastPositions = Object.assign({}, lastPositions, eq, { open: eq.open, closed: eq.closed, mtm: eq.mtm });
