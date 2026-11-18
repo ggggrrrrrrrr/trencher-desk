@@ -382,23 +382,28 @@
   }
 
   /* ---------- positions ---------- */
+  function srcTag(r) {
+    if (r.source === "learn") return ' · <span class="pos-tag learn">learn</span>';
+    if (r.source === "copy") return ' · <span class="pos-tag copy">copy</span>';
+    return "";
+  }
   function renderPositions() {
     const open = (lastPositions && lastPositions.open) || [];
     const closed = (lastPositions && lastPositions.closed) || [];
     $("open-positions").innerHTML = open.length ? open.map((r) => {
       const k = cls(r.pnl);
       return '<button type="button" class="card pos" data-mint="' + esc(r.mint) + '"><div class="pos-top">' + icon(r.mint, r.symbol, true) +
-        '<div><div class="nm">' + esc(r.name) + '</div><div class="meta">$' + esc(r.symbol) + " · " + money(r.size, 0) + (r.trail_active ? ' · <span class="pos-tag trail">trailing</span>' : "") + "</div></div>" +
+        '<div><div class="nm">' + esc(r.name) + '</div><div class="meta">$' + esc(r.symbol) + " · " + money(r.size, 0) + srcTag(r) + (r.trail_active ? ' · <span class="pos-tag trail">trailing</span>' : "") + "</div></div>" +
         '<div class="pnl ' + k + '">' + signed(r.pnl) + "<small>" + pct(r.pnl_pct) + "</small></div></div>" +
         '<div class="pos-grid"><div>entry<b>' + px(r.entry) + "</b></div><div>live<b>" + px(r.price) + "</b></div><div>stop<b>" + px(r.stop) + (r.stop_pct != null ? " <span class=\"muted\">−" + Number(r.stop_pct).toFixed(0) + "%</span>" : "") + "</b></div><div>held<b>" + dur(Date.now() - Date.parse(r.opened_at || "")) + "</b></div></div></button>";
     }).join("") : '<div class="card empty">no open positions</div>';
     const cl = closed.slice().sort((a, b) => Date.parse(b.closed_at || "") - Date.parse(a.closed_at || ""));
     const tot = cl.reduce((s, r) => s + (Number(r.pnl) || 0), 0);
     $("closed-meta").innerHTML = cl.length ? cl.length + " · <span class=\"" + cls(tot) + "\">" + signed(tot) + "</span>" : "";
-    $("closed-positions").innerHTML = cl.length ? cl.map((r) => {
+    $("closed-positions").innerHTML = cl.length ? cl.slice(0, 100).map((r) => {
       const k = cls(r.pnl);
       return '<button type="button" class="card pos" data-mint="' + esc(r.mint) + '"><div class="pos-top">' + icon(r.mint, r.symbol, true) +
-        '<div><div class="nm">' + esc(r.name) + '</div><div class="meta">$' + esc(r.symbol) + " · " + hhmm(r.closed_at) + ' · <span class="pos-tag">' + esc(r.reason || "closed") + "</span></div></div>" +
+        '<div><div class="nm">' + esc(r.name) + '</div><div class="meta">$' + esc(r.symbol) + " · " + hhmm(r.closed_at) + srcTag(r) + ' · <span class="pos-tag">' + esc(r.reason || "closed") + "</span></div></div>" +
         '<div class="pnl ' + k + '">' + signed(r.pnl) + "<small>" + pct(r.pnl_pct) + "</small></div></div>" +
         '<div class="pos-grid"><div>size<b>' + money(r.size, 0) + "</b></div><div>entry<b>" + px(r.entry) + "</b></div><div>exit<b>" + px(r.exit) + "</b></div><div>fees<b>" + (r.fees != null ? money(r.fees) : "—") + "</b></div></div></button>";
     }).join("") : '<div class="card empty">no closed trades today</div>';

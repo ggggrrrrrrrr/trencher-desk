@@ -117,6 +117,8 @@ main{padding:0 16px;max-width:520px;margin:0 auto}
 .pos-grid b{display:block;color:var(--txt);font-weight:500;font-size:11px;margin-top:1px}
 .pos-tag{font-size:9.5px;border:1px solid var(--line);border-radius:999px;padding:0 6px;color:var(--dim)}
 .pos-tag.trail{color:var(--green);border-color:rgba(61,220,132,.35)}
+.pos-tag.learn{color:var(--blue);border-color:rgba(90,160,255,.35)}
+.pos-tag.copy{color:var(--amber);border-color:rgba(255,184,77,.35)}
 
 .live{display:inline-flex;align-items:center;gap:6px}
 .live i{margin-right:1px}
