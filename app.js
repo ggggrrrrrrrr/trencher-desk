@@ -52,7 +52,7 @@
     }
     return new URL(path, loc.origin);
   }
-  function dataUrl(file) { return new URL("d/" + dataPath() + "/" + file, pageBase()).href; }
+  function dataUrl(file) { return new URL("d/" + dataPath() + "/" + file + "?t=" + Math.floor(Date.now() / 5000), pageBase()).href; }
   function headers() { const t = token(); const h = { "Accept": "application/json" }; if (t) h["Authorization"] = "Bearer " + t; return h; }
 
 
@@ -645,7 +645,16 @@
   ["open-positions", "closed-positions"].forEach((id) => $(id).addEventListener("click", (ev) => { const b = ev.target.closest("[data-mint]"); if (b) openCoin(b.getAttribute("data-mint")); }));
   let rz = 0; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(renderAll, 120); });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { refresh(); tickLivePrices(); } });
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register(new URL("sw.js?v=9", pageBase()).href).catch(() => {});
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register(new URL("sw.js?v=10", pageBase()).href, { updateViaCache: "none" }).then((reg) => {
+      const check = () => reg.update().catch(() => {});
+      check(); setInterval(check, 5 * 60 * 1000);
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); });
+    }).catch(() => {});
+    // a new SW took over (skipWaiting + clients.claim): reload once so the new app.js runs
+    let reloaded = false; const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (reloaded || !hadController) return; reloaded = true; window.location.reload(); });
+  }
 
   refresh();
   setInterval(refresh, 5000);
