@@ -9,13 +9,13 @@
   <meta name="apple-mobile-web-app-title" content="Grok Bot">
   <meta name="theme-color" content="#0a0d0c">
   <title>trencher desk</title>
-  <link rel="manifest" href="manifest.json?v=7">
+  <link rel="manifest" href="manifest.json?v=8">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="app.css?v=7">
+  <link rel="stylesheet" href="app.css?v=8">
 </head>
 <body>
   <div class="ticker" aria-label="coins"><div class="ticker-track" id="ticker"></div></div>
@@ -58,10 +58,12 @@
 
     <section class="chart-box">
       <canvas id="home-chart" aria-label="paper balance chart"></canvas>
+      <div id="scrub-tip" class="scrub-tip hidden" aria-live="polite"></div>
       <div id="chart-empty" class="chart-empty hidden">waiting for first signal</div>
       <div class="chart-axis">
         <span id="chart-t0">--:--</span>
         <span class="legend"><i class="lg-solid"></i>value <i class="lg-dash"></i>put in</span>
+        <span id="chart-t1">--:--</span>
       </div>
     </section>
 
@@ -141,7 +143,7 @@
     <div id="coin-empty" class="card empty hidden">coin not in tonight's positions</div>
   </main>
 
-  <script src="chart.js?v=7"></script>
-  <script src="app.js?v=7"></script>
+  <script src="chart.js?v=8"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

@@ -120,6 +120,14 @@
   function agent(id) { return agentsWithStatus().find((a) => a.id === id) || null; }
 
   /* ---------- render: header + balance + chart ---------- */
+  let scrubbing = false;
+  function setBalance(v) {
+    const bal = $("balance");
+    if (v == null) { bal.innerHTML = '<span class="int">$—</span>'; return; }
+    const cents = Math.round(Math.abs(v) * 100), int = Math.floor(cents / 100), dec = cents % 100;
+    const html = '<span class="int">' + (v < 0 ? "−$" : "$") + int.toLocaleString("en-US") + '</span><span class="dec">.' + String(dec).padStart(2, "0") + "</span>";
+    if (bal.__html !== html) { bal.innerHTML = html; bal.__html = html; }
+  }
   function renderTop() {
     const s = lastState || {};
     const mtm = num(s.balance);
@@ -132,14 +140,7 @@
     $("mode-pill").textContent = (s.mode || "PAPER").toLowerCase() + " mode";
     $("head-sub").textContent = "scanning new pairs · via telegram · " + (Number.isFinite(firstT) ? Math.max(0, Math.floor((Date.now() - firstT) / 3600000)) + "h in" : "—");
 
-    const bal = $("balance");
-    if (mtm == null) bal.innerHTML = '<span class="int">$—</span>';
-    else {
-      const neg = mtm < 0, a = Math.abs(mtm);
-      const int = Math.floor(a), dec = Math.round((a - int) * 100);
-      const intS = (neg ? "−$" : "$") + int.toLocaleString("en-US");
-      bal.innerHTML = '<span class="int">' + intS + '</span><span class="dec">.' + String(dec === 100 ? 99 : dec).padStart(2, "0") + "</span>";
-    }
+    if (!scrubbing) setBalance(mtm);
 
     // change over the last hour of balance points
     const dp = $("delta-pill");
@@ -149,7 +150,7 @@
     if (ref1h == null && pts.length) ref1h = Number(pts[0].v);
     if (mtm != null && ref1h != null) {
       const d = mtm - ref1h;
-      dp.textContent = (d >= 0 ? "+" : "−") + "$" + Math.abs(d).toFixed(Math.abs(d) >= 100 ? 0 : 2);
+      dp.textContent = (d >= 0 ? "+" : "−") + money(Math.abs(d));
       dp.className = "pill pill-delta " + cls(d); dp.title = "change over the last hour";
     } else { dp.textContent = "—"; dp.className = "pill pill-delta flat"; }
 
@@ -168,8 +169,12 @@
     if (view.length < 2) { view = pts.slice(-2); }
     const viewT0 = view.length ? Date.parse(view[0].t) : NaN;
     $("chart-t0").textContent = Number.isFinite(viewT0) ? hhmm(viewT0) : "--:--";
+    const viewT1 = view.length ? Date.parse(view[view.length - 1].t) : NaN;
+    $("chart-t1").textContent = Number.isFinite(viewT1) ? hhmm(viewT1) : "--:--";
     $("chart-empty").classList.toggle("hidden", pts.length > 0);
-    window.drawHomeChart($("home-chart"), view, start);
+    window.drawHomeChart($("home-chart"), view, start, (v) => money(v));
+    const lc = window.chartColor($("home-chart"));
+    document.documentElement.style.setProperty("--line-col", lc);
     $("acct-stack").textContent = money(mtm);
     $("acct-mode").textContent = s.mode || "PAPER";
   }
@@ -203,8 +208,18 @@
     const active = agents.filter((a) => a.live).length;
     $("agents-meta").textContent = active + "/" + (agents.length || 5) + " agents → risk";
 
-    // Scanner: coins the desk picked up tonight, newest first.
+    // Scanner: the last coins it looked at (liq + verdict), from the desk snapshot.
     const sc = agent("scanner");
+    const M = (lastState && lastState.metrics) || null;
+    if (M && Array.isArray(M.scannerRecent)) {
+      const rec = M.scannerRecent.slice(0, 10);
+      $("scanner-rows").innerHTML = rec.length ? rec.map((r) => {
+        const pass = r.verdict === "pass";
+        return '<div class="r">' + icon(r.mint, r.symbol) + '<span class="nm' + (pass ? "" : " killed") + '">' + esc(trunc(r.name || r.symbol || String(r.mint).slice(0, 6), 12)) + '</span><span class="meta">' + hhmm(r.ts) + " · liq " + (r.liq != null ? compact(r.liq) : "—") + "</span>" +
+          '<span class="rt"><span class="' + (pass ? "up" : "down") + '">' + (pass ? "→ auditor" : esc(trunc(r.reason || "kill", 16))) + "</span></span></div>";
+      }).join("") : '<div class="empty">no coins seen yet tonight</div>';
+      $("scanner-foot").textContent = (sc ? (sc.subtitle || "") : "") + " · last " + rec.length + " seen";
+    } else {
     const picks = allPositions().slice().sort((a, b) => Date.parse(b.opened_at || "") - Date.parse(a.opened_at || "")).slice(0, 3);
     $("scanner-rows").innerHTML = picks.length ? picks.map((r) => {
       const m = meta[r.mint] || {};
@@ -212,10 +227,11 @@
         '<span class="rt"><span class="' + cls(r.pnl_pct) + '">' + pct(r.pnl_pct) + "</span><small>" + money(r.size, 0) + "</small></span></div>";
     }).join("") : '<div class="empty">waiting for first signal</div>';
     $("scanner-foot").textContent = sc ? (sc.subtitle || "—") : "—";
+    }
 
     // Telegram feed: paper buys, sells, stops, declines from desk events.
     const rows = lastActivity || [];
-    $("feed-count").textContent = "· " + rows.length + " event" + (rows.length === 1 ? "" : "s");
+    $("feed-count").textContent = M && M.alertsSent != null ? "· " + M.alertsSent.toLocaleString("en-US") + " alerts sent" : "· " + rows.length + " event" + (rows.length === 1 ? "" : "s");
     $("feed-rows").innerHTML = rows.length ? rows.slice(0, 5).map((r) => {
       const k = String(r.kind || "").toLowerCase();
       const sym = symOf(r.mint) || (r.title || "").replace(/^\w+\s+/, "");
@@ -226,18 +242,25 @@
     // Rug check (auditor)
     const au = agent("auditor");
     const am = String((au && au.subtitle) || "").match(/(\d+)\s+taken apart\s*·\s*(\d+)\s+rejected/);
-    const nAud = am ? Number(am[1]) : 0, nRej = am ? Number(am[2]) : 0;
+    let nRej = am ? Number(am[2]) : 0, nPass = am ? Math.max(0, Number(am[1]) - Number(am[2])) : 0;
+    if (M && M.auditorRejected != null) { nRej = Number(M.auditorRejected); nPass = Number(M.auditorPassed || 0); }
     $("rug-big").textContent = String(nRej);
-    $("rug-sub").textContent = "rejected · " + Math.max(0, nAud - nRej) + " passed";
-    window.drawSpark($("spark-rug"), am ? [0, nAud - nRej, nAud] : [], "#3ddc84");
+    $("rug-sub").textContent = "rejected · " + nPass + " passed";
+    window.drawSpark($("spark-rug"), (nRej + nPass) ? [0, nPass, nRej + nPass] : [], "#3ddc84");
 
     // Execution: paper fills
     const trades = allPositions().slice().sort((a, b) => Date.parse(a.opened_at || "") - Date.parse(b.opened_at || ""));
     const ex = agent("executor");
     const nT = ex && ex.count != null ? Number(ex.count) : trades.length;
     const avg = trades.length ? trades.reduce((s, r) => s + (Number(r.size) || 0), 0) / trades.length : null;
-    $("exec-big").textContent = String(nT);
-    $("exec-sub").textContent = "paper fills · avg " + (avg != null ? money(avg, 0) : "—");
+    const lat = M ? num(M.avgFillLatencyMs) : null;
+    if (lat != null) {
+      $("exec-big").textContent = lat >= 1000 ? (lat / 1000).toFixed(1) + "s" : Math.round(lat) + "ms";
+      $("exec-sub").textContent = "avg fill · " + nT + " trade" + (nT === 1 ? "" : "s") + (avg != null ? " · avg " + money(avg, 0) : "");
+    } else {
+      $("exec-big").textContent = String(nT);
+      $("exec-sub").textContent = "paper fills · avg " + (avg != null ? money(avg, 0) : "—");
+    }
     window.drawSpark($("spark-exec"), trades.map((r) => r.size), "#4da3ff");
 
     // Risk
@@ -320,6 +343,22 @@
 
   function renderAll() { renderTop(); renderTicker(); renderAgents(); renderDecisions(); renderPositions(); }
 
+  /* ---------- honest PAPER costs (same model as desk/costs.py + fees.py) ---------- */
+  const POOL_FEE = 0.0025, UNKNOWN_SLIP = 0.03;
+  function sideFee(t) { t = Number(t) || 0; if (t <= 0) return 0; const raw = t < 47.5 ? t * 0.02 : (t <= 190 ? 0.95 : t * 0.005); return raw * (1 - feeDiscount()); }
+  function feeDiscount() { const d = Number(lastState && lastState.feesRefDiscount); return Number.isFinite(d) ? d : 0; }
+  function liquidation(entry, now, size, entryLiq, nowLiq) {
+    size = Number(size) || 0; entry = Number(entry) || 0; now = Number(now) || 0;
+    if (size <= 0 || entry <= 0) return 0;
+    const ef = sideFee(size), spend = Math.max(0, size - ef);
+    const x0 = Number(entryLiq) > 0 ? Number(entryLiq) / 2 : null, x1 = Number(nowLiq) > 0 ? Number(nowLiq) / 2 : null;
+    const fill = entry * (1 + (x0 ? spend / x0 : UNKNOWN_SLIP)) * (1 + POOL_FEE);
+    const valueMid = spend / fill * now;
+    let out = x1 ? valueMid / (1 + valueMid / x1) : valueMid * (1 - UNKNOWN_SLIP);
+    out *= (1 - POOL_FEE);
+    return Math.max(0, out - sideFee(out));
+  }
+
   /* ---------- live MTM (DexScreener, 10s) ---------- */
   function recomputeMtm(pos, prices) {
     const settled = Number(pos && pos.settled != null ? pos.settled : (lastState && lastState.settled));
@@ -328,11 +367,14 @@
       const next = Object.assign({}, row);
       const live = prices && prices[row.mint] != null ? prices[row.mint] : row.price;
       if (live != null) next.price = live;
+      const liqNow = (meta[row.mint] && meta[row.mint].liq) || row.last_liq || row.entry_liq;
       if (next.price && next.entry) {
-        next.pnl = Number(next.size) * (Number(next.price) / Number(next.entry) - 1);
-        next.pnl_pct = (Number(next.price) / Number(next.entry) - 1) * 100;
+        // net of fees + slippage: what selling right now would actually pay
+        const val = liquidation(next.entry, next.price, next.size, row.entry_liq, liqNow);
+        next.pnl = val - Number(next.size);
+        next.pnl_pct = Number(next.size) ? (val / Number(next.size) - 1) * 100 : 0;
         unreal += next.pnl;
-      }
+      } else if (next.size) { unreal -= sideFee(next.size); }
       return next;
     });
     const base = Number.isFinite(settled) ? settled : 0;
@@ -353,7 +395,9 @@
       if (!addr) continue;
       const liq = Number(((p.liquidity) || {}).usd) || 0;
       const v = Number(p.priceUsd);
-      if (!best[addr] || liq >= best[addr].liq) best[addr] = { liq: liq, price: v > 0 ? v : null, img: (p.info && p.info.imageUrl) || (best[addr] && best[addr].img) || null };
+      const pump = p.dexId === "pumpswap";
+      if (best[addr] && best[addr].pump && !pump) { if (!best[addr].img && p.info && p.info.imageUrl) best[addr].img = p.info.imageUrl; continue; }
+      if (!best[addr] || (pump && !best[addr].pump) || liq >= best[addr].liq) best[addr] = { pump: pump, liq: liq, price: v > 0 ? v : null, img: (p.info && p.info.imageUrl) || (best[addr] && best[addr].img) || null };
       else if (!best[addr].img && p.info && p.info.imageUrl) best[addr].img = p.info.imageUrl;
     }
     return best;
@@ -466,7 +510,47 @@
     input.value = ""; showLogin(false); showError(""); refresh();
   }
 
+  /* ---------- chart scrubbing (touch + mouse) ---------- */
+  function showScrub(hit) {
+    const tip = $("scrub-tip"), box = $("home-chart").parentNode;
+    if (!hit) { tip.classList.add("hidden"); scrubbing = false; box.classList.remove("scrubbing"); renderTop(); return; }
+    scrubbing = true; box.classList.add("scrubbing");
+    const start = startValue();
+    setBalance(hit.v);
+    const d = start != null ? hit.v - start : null;
+    const dEl = d == null ? "" : '<span class="' + cls(d) + '">' + signed(d) + " · " + pct(start ? d / start * 100 : 0) + "</span>";
+    tip.innerHTML = "<b>" + money(hit.v) + "</b><span>" + hhmm(hit.t) + " CET</span>" + dEl;
+    const pl = $("pnl-line");
+    if (d != null) { pl.textContent = signed(d) + " vs " + money(start, 0) + " put in · " + hhmm(hit.t) + " CET"; pl.className = cls(d); }
+    const bw = box.clientWidth, tw = tip.offsetWidth || 120;
+    const left = Math.max(6, Math.min(bw - tw - 6, hit.x + 4 - tw / 2));
+    tip.style.transform = "translate3d(" + Math.round(left) + "px,0,0)";
+    tip.classList.remove("hidden");
+  }
+  function wireScrub() {
+    const cv = $("home-chart");
+    let sx = 0, sy = 0, mode = null, lastIdx = -1;
+    function at(x) {
+      const hit = window.scrubHomeChart(cv, x);
+      if (hit && hit.index !== lastIdx) { lastIdx = hit.index; cv.parentNode.classList.remove("tick"); void cv.parentNode.offsetWidth; cv.parentNode.classList.add("tick"); }
+      showScrub(hit);
+    }
+    function end() { mode = null; lastIdx = -1; window.scrubHomeChart(cv, null); showScrub(null); }
+    cv.addEventListener("touchstart", (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; mode = "pending"; at(t.clientX); }, { passive: true });
+    cv.addEventListener("touchmove", (e) => {
+      const t = e.touches[0]; if (!t) return;
+      if (mode === "pending") { const dx = Math.abs(t.clientX - sx), dy = Math.abs(t.clientY - sy); if (dx > 6 || dy > 6) mode = dx >= dy ? "scrub" : "scroll"; }
+      if (mode === "scroll") { end(); return; }
+      if (e.cancelable) e.preventDefault();
+      at(t.clientX);
+    }, { passive: false });
+    cv.addEventListener("touchend", end); cv.addEventListener("touchcancel", end);
+    cv.addEventListener("mousemove", (e) => at(e.clientX));
+    cv.addEventListener("mouseleave", end);
+  }
+
   /* ---------- wiring ---------- */
+  wireScrub();
   captureFromHash();
   $("login-save").addEventListener("click", onSaveLogin);
   $("login-link").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); onSaveLogin(); } });
@@ -475,7 +559,7 @@
   ["open-positions", "closed-positions"].forEach((id) => $(id).addEventListener("click", (ev) => { const b = ev.target.closest("[data-mint]"); if (b) openCoin(b.getAttribute("data-mint")); }));
   let rz = 0; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(renderAll, 120); });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { refresh(); tickLivePrices(); } });
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register(new URL("sw.js?v=7", pageBase()).href).catch(() => {});
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register(new URL("sw.js?v=8", pageBase()).href).catch(() => {});
 
   refresh();
   setInterval(refresh, 5000);

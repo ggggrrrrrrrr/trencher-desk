@@ -143,3 +143,29 @@ main{padding:0 16px;max-width:520px;margin:0 auto}
 .coin-heading{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;margin-bottom:4px}
 .coin-heading .meta{font-size:11px;color:var(--mute);font-weight:400}
 .foot{text-align:center;font-size:10px;margin:18px 0 6px}
+
+/* v8: scrub, tap targets, stable layout */
+:root{--line-col:#3ddc84}
+.legend i.lg-solid{border-top-color:var(--line-col)}
+#home-chart{touch-action:pan-y;cursor:crosshair;-webkit-user-select:none;user-select:none}
+.scrub-tip{position:absolute;top:-4px;left:0;display:flex;flex-direction:column;gap:1px;padding:6px 9px;border-radius:9px;
+  background:rgba(17,22,20,.94);border:1px solid #29332e;font-size:10.5px;line-height:1.3;pointer-events:none;white-space:nowrap;
+  box-shadow:0 6px 18px rgba(0,0,0,.45);will-change:transform;z-index:2}
+.scrub-tip b{font-size:13px;color:#fff;font-variant-numeric:tabular-nums}
+.scrub-tip span{color:var(--dim)} .scrub-tip span.up{color:var(--green)} .scrub-tip span.down{color:var(--red)}
+.chart-box.tick #home-chart{animation:tickpulse .09s ease-out}
+@keyframes tickpulse{0%{transform:scale(1.004)}100%{transform:scale(1)}}
+.chart-box.scrubbing .balance{opacity:.98}
+.head-btn{min-width:44px;min-height:44px;border-radius:12px;font-size:16px}
+.back{min-height:44px;padding:12px 8px 12px 0}
+.login-row button{min-height:44px;min-width:64px}
+.login-row input{min-height:44px}
+.kv.link{min-height:44px;align-items:center}
+.pos{min-height:44px}
+.balance,.pill,.stat-big,.pos-grid b,.pnl,.rt,#pnl-line,#elapsed{font-variant-numeric:tabular-nums}
+.balance{min-height:56px;white-space:nowrap}
+.pill-delta{min-width:72px;justify-content:center}
+.stat-big{min-height:26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#scanner-rows{min-height:60px}
+.r .nm.killed{color:var(--dim);text-decoration:line-through;text-decoration-color:rgba(255,90,82,.6)}
+.chart-axis #chart-t1{min-width:38px;text-align:right}
