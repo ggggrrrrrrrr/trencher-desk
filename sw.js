@@ -1,5 +1,5 @@
-/* desk-static-v11: network-first; never cache /d/ data (including 404s). */
-const CACHE = "desk-static-v11";
+/* desk-static-v12: network-first; never cache /d/ data (including 404s). */
+const CACHE = "desk-static-v12";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());

@@ -63,20 +63,53 @@
       rows.push('<div class="r"><div><div class="nm">' + esc(k) + '</div><div class="meta">' + v.n + " closed · " + (v.open || 0) + ' open</div></div><div class="rt"><span class="copy-wr' + ((v.win_rate || 0) >= 50 ? " hi" : "") + '">' + wr(v.win_rate) + '</span><small class="' + ((v.net_pnl || 0) >= 0 ? "up" : "down") + '">' + sgn(v.net_pnl) + "</small></div></div>"); });
     (L.per_leader || []).forEach((v) => {
       rows.push('<div class="r"><div><div class="nm">' + esc(trunc(v.name, 14)) + '</div><div class="meta">leader · ' + v.n + " copies" + (v.benched ? " · benched" : "") + '</div></div><div class="rt"><span class="copy-wr' + ((v.win_rate || 0) >= 50 ? " hi" : "") + '">' + wr(v.win_rate) + '</span><small class="' + ((v.net_pnl || 0) >= 0 ? "up" : "down") + '">' + sgn(v.net_pnl) + "</small></div></div>"); });
+    renderFilters(L.filters).forEach((x) => rows.push(x));
     el.innerHTML = rows.join("") || '<div class="empty">no closed paper trades yet</div>';
     const props = (L.proposals || []).map((p) => "proposal: " + p.proposal + " (" + p.trades + " trades, win " + wr(p.win_rate) + ", " + sgn(p.net_pnl) + ")");
     const bench = (L.benched || []).map((b) => "benched " + b.leader);
     $("learn-foot").textContent = (bench.concat(props).join(" · ")) || "no changes proposed · leaders bench after 5 losing copies";
   }
+  function renderLearnMode(M) {
+    const card = $("learnmode-card"); if (!card) return;
+    if (!M) { card.classList.add("hidden"); return; }
+    card.classList.remove("hidden");
+    const fresh = M.updatedAt && (Date.now() - Date.parse(M.updatedAt) < 6 * 60 * 1000);
+    const d = $("dot-learnmode"); if (d) d.className = "dot" + (fresh && M.enabled ? " on" : "");
+    const r = M.rules || {};
+    $("learnmode-head").textContent = (M.enabled ? (fresh ? "live" : "stale") : "off") + " · " + Math.round(M.scanned_per_min || 0) + " coins/min · pool " + (M.pool_size || 0) + " · " + (M.opens_15m || 0) + " buys / 15 min";
+    const src = M.intake_by_source || {};
+    const srcTxt = Object.keys(src).sort((a, b) => src[b] - src[a]).slice(0, 4).map((k) => k.replace("dexscreener_", "dex ").replace("gecko_", "gecko ").replace("pumpportal_", "pp ") + " " + src[k]).join(" · ");
+    const skips = M.skip_reasons || {};
+    const skipTxt = Object.keys(skips).slice(0, 3).map((k) => k + " " + skips[k]).join(" · ");
+    const pnl = Number(M.learn_pnl_today || 0);
+    $("learnmode-stats").innerHTML =
+      '<div class="r"><div><div class="nm">open learn trades</div><div class="meta">max ' + esc(r.max_open) + " · $" + esc(r.ticket_usd) + " each · " + (M.opens_total || 0) + ' bought since start</div></div><div class="rt"><span class="copy-wr">' + ((M.open || []).length) + '</span><small class="' + (pnl >= 0 ? "up" : "down") + '">' + sgn(pnl) + " today</small></div></div>" +
+      '<div class="r"><div><div class="nm">sources</div><div class="meta copy-why">' + esc(srcTxt || "warming up") + "</div></div></div>" +
+      (skipTxt ? '<div class="r"><div><div class="nm">most skipped</div><div class="meta copy-why">' + esc(skipTxt) + "</div></div></div>" : "") +
+      (M.paused_reason ? '<div class="r"><div><div class="nm">paused</div><div class="meta copy-why">' + esc(M.paused_reason) + "</div></div></div>" : "");
+    const dec = M.decisions || [];
+    $("learnmode-decisions").innerHTML = dec.slice(0, 8).map((x) => {
+      const k = x.kind === "BUY" ? "BUY" : "SKIP";
+      return '<div class="l"><span class="t">' + hhmm(x.ts) + '</span><span class="k k-' + k + '">' + k + '</span><span class="s">$' + esc(trunc(x.symbol, 10)) + ' <span class="muted">' + esc(x.text) + '</span></span><span class="x ' + (k === "BUY" ? "up" : "muted") + '">' + esc(x.value || "") + "</span></div>";
+    }).join("");
+    $("learnmode-foot").textContent = "paper · hard checks: mint + freeze revoked, liq ≥" + usd(r.min_liquidity_usd) + ", ticket ≤" + r.max_pool_pct + "% of pool, RugCheck honeypot · other filters recorded, not required · stop −" + r.stop_pct + "% · max " + Math.round((r.timeout_h || 1.5) * 60) + " min";
+  }
+  function renderFilters(F) {
+    if (!F) return [];
+    const rows = [];
+    Object.keys(F).filter((k) => k[0] !== "_").forEach((k) => { const f = F[k]; if (!f || (!f.pass.n && !f.fail.n)) return;
+      rows.push('<div class="r"><div><div class="nm">filter ' + esc(k) + '</div><div class="meta">pass ' + f.pass.n + " · win " + wr(f.pass.win_rate) + " | fail " + f.fail.n + " · win " + wr(f.fail.win_rate) + '</div></div><div class="rt"><small>' + esc(f.verdict) + "</small></div></div>"); });
+    return rows;
+  }
   async function refreshLearn() {
     const d = dataPath(); if (!d) return;
     try {
       const r = await fetch(new URL("d/" + d + "/learn.json", pageBase()).href, { cache: "no-store", headers: { "Accept": "application/json" } });
-      if (r.ok) renderLearn(await r.json());
+      if (r.ok) { const L = await r.json(); renderLearn(L); renderLearnMode(L.live); }
     } catch (e) {}
   }
   refreshLearn();
-  setInterval(refreshLearn, 30000);
+  setInterval(refreshLearn, 15000);
 
   let busy = false;
   async function refresh() {
