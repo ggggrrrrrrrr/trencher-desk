@@ -35,6 +35,11 @@
     }
 
     const start = startValue != null ? Number(startValue) : pts[0].v;
+    const lastV = pts[pts.length - 1].v;
+    const up = lastV >= start;
+    const line = up ? GREEN : "#ff453a";
+    const fillTop = up ? "rgba(0,211,90,0.28)" : "rgba(255,69,58,0.28)";
+    const fillBot = up ? "rgba(0,211,90,0)" : "rgba(255,69,58,0)";
     let minV = Math.min(start, ...pts.map((p) => p.v));
     let maxV = Math.max(start, ...pts.map((p) => p.v));
     if (minV === maxV) {
@@ -69,8 +74,8 @@
     ctx.lineTo(xOf(pts[0].t), padT + h);
     ctx.closePath();
     const grd = ctx.createLinearGradient(0, padT, 0, padT + h);
-    grd.addColorStop(0, "rgba(0,211,90,0.28)");
-    grd.addColorStop(1, "rgba(0,211,90,0)");
+    grd.addColorStop(0, fillTop);
+    grd.addColorStop(1, fillBot);
     ctx.fillStyle = grd;
     ctx.fill();
 
@@ -80,7 +85,7 @@
     for (let i = 1; i < pts.length; i++) {
       ctx.lineTo(xOf(pts[i].t), yOf(pts[i].v));
     }
-    ctx.strokeStyle = GREEN;
+    ctx.strokeStyle = line;
     ctx.lineWidth = 2;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
@@ -88,4 +93,5 @@
   }
 
   global.drawHomeChart = drawHomeChart;
+  global.drawPriceChart = drawHomeChart;
 })(window);

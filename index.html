@@ -9,9 +9,9 @@
   <meta name="apple-mobile-web-app-title" content="Grok Bot">
   <meta name="theme-color" content="#000000">
   <title>Grok Bot</title>
-  <link rel="manifest" href="manifest.json?v=5">
+  <link rel="manifest" href="manifest.json?v=6">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="app.css?v=5">
+  <link rel="stylesheet" href="app.css?v=6">
 </head>
 <body>
   <div id="error" class="error hidden" role="status"></div>
@@ -57,6 +57,12 @@
         <button type="button" data-range="ALL">ALL</button>
       </div>
     </section>
+    <section id="positions-wrap">
+      <h2>Open positions <span id="live-dot" class="live-dot off" title="live prices"><span class="live-pip"></span> live prices</span></h2>
+      <div id="open-positions" class="pos-list empty">No open positions</div>
+      <h2 id="closed-heading">Closed today</h2>
+      <div id="closed-positions" class="pos-list empty">No closed trades today</div>
+    </section>
     <section>
       <h2>Agents · <span id="agents-running">0 running</span></h2>
       <div id="agent-carousel" class="carousel"></div>
@@ -86,6 +92,12 @@
     <p class="acct-note" id="acct-webpush-note">Web push is not available on GitHub Pages (Telegram only).</p>
   </main>
   <main id="tab-coin" class="tab-panel hidden">
+    <button type="button" id="coin-back" class="back-btn">‹ Home</button>
+    <div id="coin-heading" class="coin-heading"></div>
+    <section class="chart-wrap">
+      <canvas id="coin-chart" width="358" height="180" aria-label="Coin price chart"></canvas>
+    </section>
+    <div id="coin-detail"></div>
     <div id="coin-empty" class="activity empty">Search a name, symbol or mint. Coin screen without a position has no exit card.</div>
     <div id="coin-error" class="error hidden" role="status"></div>
   </main>
@@ -97,7 +109,7 @@
     <button type="button" data-tab="account">Account</button>
   </nav>
 
-  <script src="chart.js?v=5"></script>
-  <script src="app.js?v=5"></script>
+  <script src="chart.js?v=6"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
