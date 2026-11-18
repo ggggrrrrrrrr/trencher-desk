@@ -1,0 +1,24 @@
+# Never commit secrets, runtime state, or desk Python.
+.venv/
+__pycache__/
+*.py[cod]
+*.py
+data/
+*.db
+*.db-wal
+*.db-shm
+logs/
+*.log
+secrets/
+.env
+.env.*
+DATA_PATH
+APP_TOKEN
+VAPID_PRIVATE_KEY
+VAPID_PUBLIC_KEY
+VAPID_PUBLIC_KEY_PEM
+vapid-public.js
+*.pem
+*.key
+desk.db
+.DS_Store

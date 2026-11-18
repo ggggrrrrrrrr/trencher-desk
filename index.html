@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Grok Bot">
+  <meta name="theme-color" content="#000000">
+  <title>Grok Bot</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="error" class="error hidden" role="status"></div>
+  <header class="navbar">
+    <button class="avatar" id="btn-account" aria-label="Account" type="button"></button>
+    <div class="brand">Grok Bot ›</div>
+    <div class="nav-right">
+      <button class="icon-btn" id="btn-search" aria-label="Search" type="button">⌕</button>
+      <button class="icon-btn bell" id="btn-bell" aria-label="Notifications" type="button">
+        <span class="bell-dot hidden" id="bell-dot"></span>
+      </button>
+    </div>
+  </header>
+
+  <main id="tab-home" class="tab-panel">
+    <section class="balance-block">
+      <div class="balance-row">
+        <div id="balance" class="balance">$200.00</div>
+        <span id="paper-badge" class="paper-badge">PAPER</span>
+      </div>
+      <div class="meta-row">
+        <span id="today" class="today">+0.00%</span>
+        <span id="multiplier" class="multiplier">1.00×</span>
+      </div>
+    </section>
+    <section class="chart-wrap">
+      <canvas id="home-chart" width="358" height="180" aria-label="Paper balance chart"></canvas>
+      <div id="chart-empty" class="chart-empty hidden">Waiting for the first trade</div>
+      <div class="ranges" id="ranges">
+        <button type="button" data-range="LIVE" class="on">LIVE</button>
+        <button type="button" data-range="1H">1H</button>
+        <button type="button" data-range="4H">4H</button>
+        <button type="button" data-range="1D">1D</button>
+        <button type="button" data-range="1W">1W</button>
+        <button type="button" data-range="ALL">ALL</button>
+      </div>
+    </section>
+    <section>
+      <h2>Agents · <span id="agents-running">0 running</span></h2>
+      <div id="agent-carousel" class="carousel"></div>
+    </section>
+    <section>
+      <h2>Activity · See all</h2>
+      <div id="activity-home" class="activity empty">Nothing yet tonight</div>
+    </section>
+  </main>
+
+  <main id="tab-agents" class="tab-panel hidden">
+    <div id="agents-full"></div>
+  </main>
+  <main id="tab-activity" class="tab-panel hidden">
+    <div id="activity-full" class="activity empty">Nothing yet tonight</div>
+  </main>
+  <main id="tab-account" class="tab-panel hidden">
+    <div class="card">
+      <div class="row"><span>Mode</span><strong id="acct-mode">PAPER</strong></div>
+      <div class="row"><span>Stack</span><strong id="acct-stack">$200.00</strong></div>
+      <a class="row" id="acct-profile" href="#" rel="noopener">Your FOMO profile</a>
+      <a class="row" id="acct-invite" href="#" rel="noopener">Invite a friend</a>
+      <div class="row"><span>Telegram</span><strong id="acct-tg">—</strong></div>
+    </div>
+    <p class="acct-note">This tab is read-only. Settings, pause and mode are changed through Telegram commands.</p>
+  </main>
+
+  <nav class="tabbar">
+    <button type="button" class="on" data-tab="home">Home</button>
+    <button type="button" data-tab="agents">Agents</button>
+    <button type="button" data-tab="activity">Activity</button>
+    <button type="button" data-tab="account">Account</button>
+  </nav>
+
+  <script src="chart.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
