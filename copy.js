@@ -52,6 +52,32 @@
     $("copy-core-foot").textContent = "paper · " + r.stack_pct + "% per copy · stop −" + r.stop_pct + "% · exit when leader sells · liq ≥" + usd(r.min_liquidity_usd) + " · top10 <" + r.max_top10_pct + "% · chase ≤" + r.max_chase_pct + "%";
   }
 
+  function wr(v) { return v == null ? "—" : Number(v).toFixed(0) + "%"; }
+  function sgn(v) { v = Number(v || 0); return (v >= 0 ? "+$" : "−$") + Math.abs(v).toFixed(2); }
+  function renderLearn(L) {
+    const el = $("copy-learn"); if (!el || !L || !L.overall) return;
+    const o = L.overall;
+    $("learn-head").textContent = (o.n || 0) + " closed · win " + wr(o.win_rate) + " · net " + sgn(o.net_pnl);
+    const rows = [];
+    Object.keys(L.by_source || {}).forEach((k) => { const v = L.by_source[k];
+      rows.push('<div class="r"><div><div class="nm">' + esc(k) + '</div><div class="meta">' + v.n + " closed · " + (v.open || 0) + ' open</div></div><div class="rt"><span class="copy-wr' + ((v.win_rate || 0) >= 50 ? " hi" : "") + '">' + wr(v.win_rate) + '</span><small class="' + ((v.net_pnl || 0) >= 0 ? "up" : "down") + '">' + sgn(v.net_pnl) + "</small></div></div>"); });
+    (L.per_leader || []).forEach((v) => {
+      rows.push('<div class="r"><div><div class="nm">' + esc(trunc(v.name, 14)) + '</div><div class="meta">leader · ' + v.n + " copies" + (v.benched ? " · benched" : "") + '</div></div><div class="rt"><span class="copy-wr' + ((v.win_rate || 0) >= 50 ? " hi" : "") + '">' + wr(v.win_rate) + '</span><small class="' + ((v.net_pnl || 0) >= 0 ? "up" : "down") + '">' + sgn(v.net_pnl) + "</small></div></div>"); });
+    el.innerHTML = rows.join("") || '<div class="empty">no closed paper trades yet</div>';
+    const props = (L.proposals || []).map((p) => "proposal: " + p.proposal + " (" + p.trades + " trades, win " + wr(p.win_rate) + ", " + sgn(p.net_pnl) + ")");
+    const bench = (L.benched || []).map((b) => "benched " + b.leader);
+    $("learn-foot").textContent = (bench.concat(props).join(" · ")) || "no changes proposed · leaders bench after 5 losing copies";
+  }
+  async function refreshLearn() {
+    const d = dataPath(); if (!d) return;
+    try {
+      const r = await fetch(new URL("d/" + d + "/learn.json", pageBase()).href, { cache: "no-store", headers: { "Accept": "application/json" } });
+      if (r.ok) renderLearn(await r.json());
+    } catch (e) {}
+  }
+  refreshLearn();
+  setInterval(refreshLearn, 30000);
+
   let busy = false;
   async function refresh() {
     const d = dataPath(); if (!d || busy) return; busy = true;
