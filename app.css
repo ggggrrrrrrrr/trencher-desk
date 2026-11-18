@@ -180,3 +180,14 @@ main{padding:0 16px;max-width:520px;margin:0 auto}
 .push-key-row input{flex:1;min-height:44px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--txt);padding:0 10px;font:inherit;font-size:16px}
 .btn-small{min-height:44px;min-width:72px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--txt);font:inherit}
 .push-code{width:100%;box-sizing:border-box;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--txt);font:inherit;font-size:11px;padding:8px;word-break:break-all}
+
+/* v9 night shift recap */
+.link-btn{min-height:44px;min-width:44px;padding:0 4px;border:0;background:transparent;color:var(--muted,#8a8f98);font:inherit;font-size:12px;cursor:pointer}
+.recap{margin-bottom:10px}
+.recap-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;margin-bottom:8px}
+.recap-big{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 8px}
+.recap-big div{display:flex;flex-direction:column;gap:2px}
+.recap-big span{font-size:11px}
+.recap-big b{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.recap-big small{font-size:11px;font-variant-numeric:tabular-nums}
+.recap .kv b{font-variant-numeric:tabular-nums;text-align:right}

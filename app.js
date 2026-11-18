@@ -56,6 +56,38 @@
   function headers() { const t = token(); const h = { "Accept": "application/json" }; if (t) h["Authorization"] = "Bearer " + t; return h; }
 
 
+
+  /* ---------- night shift recap (00:00–08:00 CET, real rows only) ---------- */
+  let recapOpen = null;  // null = auto
+  function localHour() { return Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hour12: false, timeZone: TZ }).format(new Date())); }
+  function renderRecap() {
+    const el = $("recap"), btn = $("btn-recap"); if (!el) return;
+    const r = lastState && lastState.recap;
+    const hasData = !!(r && r.sleepWith != null);
+    const auto = !!(r && r.complete && hasData && localHour() >= 8);
+    const open = recapOpen == null ? auto : recapOpen;
+    el.classList.toggle("hidden", !open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    btn.textContent = open ? "hide ‹" : "recap ›";
+    if (!open) return;
+    if (!r) { el.innerHTML = '<div class="empty">recap unavailable</div>'; return; }
+    if (!hasData) { el.innerHTML = '<div class="recap-h"><b>Night shift · ' + esc(r.date) + '</b><span class="muted">' + esc(r.window) + '</span></div><div class="empty">No night shift recorded yet: the desk has no balance rows for ' + esc(r.window) + '.</div>'; return; }
+    const d = r.wokeTo != null ? r.wokeTo - r.sleepWith : null;
+    const kv = (k, v, c) => '<div class="kv"><span class="muted">' + k + '</span><b' + (c ? ' class="' + c + '"' : "") + ">" + v + "</b></div>";
+    const tr = (t) => t ? esc("$" + String(t.symbol || "?").toUpperCase()) + " " + signed(t.pnl) + (t.pct != null ? " · " + pct(t.pct) : "") : "—";
+    const from = r.sleepFrom && r.sleepFrom !== r.start ? " (from " + hhmm(r.sleepFrom) + ")" : "";
+    el.innerHTML =
+      '<div class="recap-h"><b>Night shift · ' + esc(r.date) + '</b><span class="muted">' + esc(r.window) + (r.complete ? "" : " · in progress") + " · PAPER</span></div>" +
+      '<div class="recap-big"><div><span class="muted">went to sleep with</span><b>' + money(r.sleepWith) + '</b><small class="muted">' + "00:00 CET" + esc(from) + '</small></div><div><span class="muted">' + (r.complete ? "woke up to" : "now") + '</span><b class="' + cls(d) + '">' + money(r.wokeTo) + '</b><small class="' + cls(d) + '">' + signed(d) + (r.multiple != null ? " · " + Number(r.multiple).toFixed(2) + "×" : "") + "</small></div></div>" +
+      kv("trades", String(r.trades) + (r.opened ? " · " + r.opened + " opened" : "")) +
+      kv("win rate", r.winRate == null ? "—" : r.winRate.toFixed(0) + "% (" + r.wins + "/" + r.trades + ")") +
+      kv("best", tr(r.best), r.best ? cls(r.best.pnl) : "") +
+      kv("worst", tr(r.worst), r.worst ? cls(r.worst.pnl) : "") +
+      kv("rugs dodged", String(r.rugsDodged) + " auditor rejects") +
+      kv("coins skipped", String(r.coinsSkipped) + " scanner kills") +
+      kv("risk", "stop −" + r.stopPct + "% · trail " + r.trailPct + "% · max hold " + r.maxHoldMin + "m");
+  }
+
   /* ---------- web push (win notifications) ---------- */
   const PUSH_KEY = "desk_push_key", BOT_KEY = "desk_bot";
   function savePushParams(raw) {
@@ -393,7 +425,7 @@
   }
   function openCoin(mint) { if (!mint) return; setTab("coin"); renderCoin(mint); }
 
-  function renderAll() { renderTop(); renderTicker(); renderAgents(); renderDecisions(); renderPositions(); }
+  function renderAll() { renderTop(); renderTicker(); renderAgents(); renderDecisions(); renderPositions(); renderRecap(); }
 
   /* ---------- honest PAPER costs (same model as desk/costs.py + fees.py) ---------- */
   const POOL_FEE = 0.0025, UNKNOWN_SLIP = 0.03;
@@ -604,6 +636,7 @@
   /* ---------- wiring ---------- */
   wireScrub();
   wirePush();
+  $("btn-recap").addEventListener("click", () => { const r = lastState && lastState.recap; const cur = !$("recap").classList.contains("hidden"); recapOpen = !cur; renderRecap(); });
   captureFromHash();
   $("login-save").addEventListener("click", onSaveLogin);
   $("login-link").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); onSaveLogin(); } });
