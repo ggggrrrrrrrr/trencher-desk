@@ -112,6 +112,25 @@
       <div id="decisions" class="log"><div class="empty">waiting for first signal</div></div>
     </article>
 
+    <section id="copy-section" class="hidden">
+    <div class="sec-head"><span>copy mode · paper</span><span class="muted" id="copy-meta">—</span></div>
+    <article class="card">
+      <div class="card-head"><span><b class="star">★</b> Trader scout · top wallets</span><span class="dot" id="dot-copy-scout"></span></div>
+      <div class="card-foot muted" id="copy-scout-head">—</div>
+      <div id="copy-scout" class="rows"><div class="empty">loading leaders</div></div>
+      <div class="card-foot muted" id="copy-scout-foot">—</div>
+    </article>
+    <article class="card">
+      <div class="card-head"><span>Leader feed · buys &amp; sells</span><span class="muted" id="copy-feed-count">· 0 swaps</span></div>
+      <div id="copy-feed" class="rows"><div class="empty">waiting for first swap</div></div>
+    </article>
+    <article class="card">
+      <div class="card-head"><span>Grok core · copy decisions</span><span class="dot" id="dot-copy-core"></span></div>
+      <div id="copy-decisions" class="log"><div class="empty">waiting for the first leader swap</div></div>
+      <div class="card-foot muted" id="copy-core-foot">—</div>
+    </article>
+    </section>
+
     <div class="sec-head"><span>open positions</span><span class="muted"><span id="live-dot" class="live off"><i></i>live prices</span></span></div>
     <div id="open-positions" class="pos-list"><div class="card empty">no open positions</div></div>
 
@@ -159,5 +178,6 @@
 
   <script src="chart.js?v=9"></script>
   <script src="app.js?v=9"></script>
+  <script src="copy.js?v=1"></script>
 </body>
 </html>
