@@ -9,13 +9,13 @@
   <meta name="apple-mobile-web-app-title" content="Grok Bot">
   <meta name="theme-color" content="#0a0d0c">
   <title>trencher desk</title>
-  <link rel="manifest" href="manifest.json?v=8">
+  <link rel="manifest" href="manifest.json?v=9">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="app.css?v=8">
+  <link rel="stylesheet" href="app.css?v=9">
 </head>
 <body>
   <div class="ticker" aria-label="coins"><div class="ticker-track" id="ticker"></div></div>
@@ -127,8 +127,19 @@
       <a class="kv link" id="acct-profile" href="#" rel="noopener"><span>your FOMO profile</span><b>›</b></a>
       <a class="kv link" id="acct-invite" href="#" rel="noopener"><span>invite a friend</span><b>›</b></a>
     </article>
+    <article class="card push-card">
+      <div class="kv"><span class="muted">meldingen</span><b>winst · PAPER</b></div>
+      <button type="button" id="btn-push" class="btn-push">Meldingen aan</button>
+      <p id="push-status" class="push-status muted"></p>
+      <div id="push-key-row" class="push-key-row hidden">
+        <input id="push-key-input" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="plak de /meldingen-link…">
+        <button type="button" id="push-key-save" class="btn-small">opslaan</button>
+      </div>
+      <textarea id="push-code" class="push-code hidden" readonly rows="3"></textarea>
+      <a id="push-open" class="kv link hidden" href="#" rel="noopener"><span>open de desk-bot in Telegram</span><b>›</b></a>
+    </article>
     <p id="acct-error" class="banner hidden" role="status"></p>
-    <p class="foot muted">Read-only. Settings, pause and mode are changed through Telegram commands. Web push is not available on GitHub Pages (Telegram only).</p>
+    <p class="foot muted">Read-only. Settings, pause and mode are changed through Telegram commands. Win notifications: web push (code via Telegram, no public desk endpoint).</p>
     <div class="sec-head"><span>all activity</span><span class="muted" id="act-count"></span></div>
     <article class="card"><div id="activity-full" class="log"><div class="empty">nothing yet tonight</div></div></article>
   </main>
@@ -143,7 +154,7 @@
     <div id="coin-empty" class="card empty hidden">coin not in tonight's positions</div>
   </main>
 
-  <script src="chart.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <script src="chart.js?v=9"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

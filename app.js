@@ -29,6 +29,8 @@
         try { localStorage.setItem(TOKEN_KEY, decodeURIComponent(p.slice(2))); } catch (e) {}
       } else if (p.startsWith("d=")) {
         try { localStorage.setItem(DATA_KEY, decodeURIComponent(p.slice(2))); } catch (e) {}
+      } else if (p.startsWith("k=") || p.startsWith("b=")) {
+        savePushParams("#" + p);
       } else if (p && hash.indexOf(p) !== -1) keepHash.push(p);
     }
     history.replaceState(null, "", window.location.pathname + window.location.search + (keepHash.length ? "#" + keepHash.join("&") : ""));
@@ -52,6 +54,56 @@
   }
   function dataUrl(file) { return new URL("d/" + dataPath() + "/" + file, pageBase()).href; }
   function headers() { const t = token(); const h = { "Accept": "application/json" }; if (t) h["Authorization"] = "Bearer " + t; return h; }
+
+
+  /* ---------- web push (win notifications) ---------- */
+  const PUSH_KEY = "desk_push_key", BOT_KEY = "desk_bot";
+  function savePushParams(raw) {
+    const s = String(raw || "");
+    const k = s.match(/(?:^|[?#&])k=([A-Za-z0-9_-]{80,100})/), b = s.match(/(?:^|[?#&])b=([A-Za-z0-9_]{3,40})/);
+    try { if (k) localStorage.setItem(PUSH_KEY, k[1]); if (b) localStorage.setItem(BOT_KEY, b[1]); } catch (e) {}
+    return !!k;
+  }
+  function pushKey() { try { return localStorage.getItem(PUSH_KEY) || ""; } catch (e) { return ""; } }
+  function botName() { try { return localStorage.getItem(BOT_KEY) || ""; } catch (e) { return ""; } }
+  function b64uToBytes(s) { const pad = "=".repeat((4 - s.length % 4) % 4); const bin = atob((s + pad).replace(/-/g, "+").replace(/_/g, "/")); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
+  function bytesToB64u(buf) { let bin = ""; new Uint8Array(buf).forEach((c) => { bin += String.fromCharCode(c); }); return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+  function pushSupported() { return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
+  function pushStatus(msg, kind) { const el = $("push-status"); if (!el) return; el.textContent = msg; el.className = "push-status " + (kind || "muted"); }
+  function renderPush() {
+    const btn = $("btn-push"), keyRow = $("push-key-row"); if (!btn) return;
+    if (!pushSupported()) { btn.disabled = true; pushStatus(/iPhone|iPad/.test(navigator.userAgent) ? "Zet de app eerst op je beginscherm (Deel → Zet op beginscherm), iOS 16.4+." : "Deze browser ondersteunt geen web push."); keyRow.classList.add("hidden"); return; }
+    keyRow.classList.toggle("hidden", !!pushKey());
+    if (!pushKey()) { pushStatus("Stuur /meldingen naar de desk-bot in Telegram en plak de link hieronder."); return; }
+    if (Notification.permission === "denied") { pushStatus("Meldingen zijn geblokkeerd in Instellingen → Meldingen.", "neg"); return; }
+    try { const c = localStorage.getItem("desk_push_code"); if (c && Notification.permission === "granted") { pushStatus("Aan op dit toestel. Code nog niet verstuurd? Tik nogmaals om hem te kopiëren.", "pos"); return; } } catch (e) {}
+    pushStatus("Tik op Meldingen aan: je krijgt een melding bij elke winst (PAPER).");
+  }
+  async function onPushTap() {
+    if (!pushSupported()) { renderPush(); return; }
+    const key = pushKey(); if (!key) { renderPush(); return; }
+    try {
+      const perm = await Notification.requestPermission();  // must run inside the tap
+      if (perm !== "granted") { pushStatus("Meldingen niet toegestaan.", "neg"); return; }
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(key) });
+      const j = sub.toJSON();
+      const code = "/push " + bytesToB64u(new TextEncoder().encode(JSON.stringify({ e: j.endpoint, p: j.keys.p256dh, a: j.keys.auth })));
+      try { localStorage.setItem("desk_push_code", "1"); } catch (e) {}
+      const box = $("push-code"); box.value = code; box.classList.remove("hidden");
+      let copied = false; try { await navigator.clipboard.writeText(code); copied = true; } catch (e) { box.select(); }
+      const bot = botName(), open = $("push-open");
+      if (bot) { open.href = "https://t.me/" + bot; open.classList.remove("hidden"); }
+      pushStatus((copied ? "Code gekopieerd. " : "Kopieer de code hieronder. ") + "Plak hem in de Telegram-chat met de desk; je krijgt dan een testmelding.", "pos");
+    } catch (e) { pushStatus("Aanmelden mislukt: " + (e && e.message ? e.message : e), "neg"); }
+  }
+  function wirePush() {
+    const btn = $("btn-push"); if (!btn) return;
+    btn.addEventListener("click", onPushTap);
+    $("push-key-save").addEventListener("click", () => { const i = $("push-key-input"); if (savePushParams(i.value)) { i.value = ""; renderPush(); } else pushStatus("Dat leek geen meldingen-link. Stuur /meldingen naar de bot.", "neg"); });
+    renderPush();
+  }
 
   /* ---------- formatting ---------- */
   function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -551,15 +603,16 @@
 
   /* ---------- wiring ---------- */
   wireScrub();
+  wirePush();
   captureFromHash();
   $("login-save").addEventListener("click", onSaveLogin);
   $("login-link").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); onSaveLogin(); } });
-  $("btn-account").addEventListener("click", () => { setTab("account"); if (dataPath()) loadJson(dataUrl("account.json")).then(renderAccount).catch(() => renderAccount(null)); });
+  $("btn-account").addEventListener("click", () => { setTab("account"); renderPush(); if (dataPath()) loadJson(dataUrl("account.json")).then(renderAccount).catch(() => renderAccount(null)); });
   document.querySelectorAll("[data-home]").forEach((b) => b.addEventListener("click", () => { openCoinMint = null; setTab("home"); renderTop(); }));
   ["open-positions", "closed-positions"].forEach((id) => $(id).addEventListener("click", (ev) => { const b = ev.target.closest("[data-mint]"); if (b) openCoin(b.getAttribute("data-mint")); }));
   let rz = 0; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(renderAll, 120); });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { refresh(); tickLivePrices(); } });
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register(new URL("sw.js?v=8", pageBase()).href).catch(() => {});
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register(new URL("sw.js?v=9", pageBase()).href).catch(() => {});
 
   refresh();
   setInterval(refresh, 5000);

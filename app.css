@@ -169,3 +169,14 @@ main{padding:0 16px;max-width:520px;margin:0 auto}
 #scanner-rows{min-height:60px}
 .r .nm.killed{color:var(--dim);text-decoration:line-through;text-decoration-color:rgba(255,90,82,.6)}
 .chart-axis #chart-t1{min-width:38px;text-align:right}
+
+/* v9 push card */
+.push-card{margin-top:10px}
+.btn-push{width:100%;min-height:44px;margin:8px 0 4px;border-radius:12px;border:1px solid var(--line);background:#16a34a;color:#fff;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+.btn-push:disabled{opacity:.45}
+.push-status{font-size:12px;margin:6px 0;line-height:1.4}
+.push-status.pos{color:#22c55e}.push-status.neg{color:#ef4444}
+.push-key-row{display:flex;gap:8px;margin:6px 0}
+.push-key-row input{flex:1;min-height:44px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--txt);padding:0 10px;font:inherit;font-size:16px}
+.btn-small{min-height:44px;min-width:72px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--txt);font:inherit}
+.push-code{width:100%;box-sizing:border-box;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--txt);font:inherit;font-size:11px;padding:8px;word-break:break-all}
