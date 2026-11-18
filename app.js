@@ -1,9 +1,14 @@
 (function () {
+  "use strict";
   const TOKEN_KEY = "desk_app_token";
   const DATA_KEY = "desk_data_path";
   const STALE_AFTER_MS = 15 * 60 * 1000;
   const AGENTS_FRESH_MS = 6 * 60 * 1000;
+  const DEX_TOKENS = "https://api.dexscreener.com/tokens/v1/solana/";
+  const TZ = "Europe/Amsterdam";
+  const $ = (id) => document.getElementById(id);
 
+  /* ---------- login (unchanged behaviour) ---------- */
   function extractDataPath(raw) {
     const s = String(raw || "").trim();
     if (!s) return "";
@@ -11,11 +16,9 @@
     if (fromPair && fromPair[1]) {
       try { return decodeURIComponent(fromPair[1]); } catch (e) { return fromPair[1]; }
     }
-    // A pasted bare token is accepted, but never a short string.
     if (/^[A-Za-z0-9_-]{32,}$/.test(s)) return s;
     return "";
   }
-
   function captureFromHash() {
     const hash = window.location.hash || "";
     const search = window.location.search || "";
@@ -26,254 +29,304 @@
         try { localStorage.setItem(TOKEN_KEY, decodeURIComponent(p.slice(2))); } catch (e) {}
       } else if (p.startsWith("d=")) {
         try { localStorage.setItem(DATA_KEY, decodeURIComponent(p.slice(2))); } catch (e) {}
-      } else if (p) {
-        if (hash.indexOf(p) !== -1) keepHash.push(p);
-      }
+      } else if (p && hash.indexOf(p) !== -1) keepHash.push(p);
     }
-    const next = window.location.pathname + window.location.search + (keepHash.length ? "#" + keepHash.join("&") : "");
-    history.replaceState(null, "", next);
+    history.replaceState(null, "", window.location.pathname + window.location.search + (keepHash.length ? "#" + keepHash.join("&") : ""));
   }
-
-  function token() {
-    try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
-  }
-
-  function dataPath() {
-    try { return localStorage.getItem(DATA_KEY) || ""; } catch (e) { return ""; }
-  }
-
+  function token() { try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; } }
+  function dataPath() { try { return localStorage.getItem(DATA_KEY) || ""; } catch (e) { return ""; } }
   function saveDataPath(value) {
-    const d = extractDataPath(value) || (value && /^[A-Za-z0-9_-]{32,}$/.test(value) ? value : "");
+    const d = extractDataPath(value);
     if (!d) return false;
     try { localStorage.setItem(DATA_KEY, d); } catch (e) { return false; }
     return true;
   }
-
   function pageBase() {
-    // Avoid new URL(".", href) dropping /trencher-desk when the path has no trailing slash.
     const loc = window.location;
     let path = loc.pathname || "/";
     if (!path.endsWith("/")) {
       const last = path.split("/").pop() || "";
-      if (last.includes(".")) path = path.slice(0, path.lastIndexOf("/") + 1);
-      else path += "/";
+      if (last.includes(".")) path = path.slice(0, path.lastIndexOf("/") + 1); else path += "/";
     }
     return new URL(path, loc.origin);
   }
+  function dataUrl(file) { return new URL("d/" + dataPath() + "/" + file, pageBase()).href; }
+  function headers() { const t = token(); const h = { "Accept": "application/json" }; if (t) h["Authorization"] = "Bearer " + t; return h; }
 
-  function dataUrl(file) {
-    const d = dataPath();
-    return new URL("d/" + d + "/" + file, pageBase()).href;
+  /* ---------- formatting ---------- */
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function num(n) { const v = Number(n); return Number.isFinite(v) ? v : null; }
+  function money(n, dp) {
+    const v = num(n); if (v == null) return "—";
+    const d = dp == null ? 2 : dp;
+    return (v < 0 ? "−" : "") + "$" + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
   }
-
-  function headers() {
-    const t = token();
-    const h = { "Accept": "application/json" };
-    if (t) h["Authorization"] = "Bearer " + t;
-    return h;
-  }
-
-  function money(n) {
-    const v = Number(n);
-    if (Number.isNaN(v)) return "—";
-    return "$" + v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-
-  function esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
-
+  function signed(n, dp) { const v = num(n); if (v == null) return "—"; return (v > 0 ? "+" : v < 0 ? "−" : "") + "$" + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: dp == null ? 2 : dp, maximumFractionDigits: dp == null ? 2 : dp }); }
+  function pct(n) { const v = num(n); if (v == null) return "—"; return (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(Math.abs(v) >= 100 ? 0 : 1) + "%"; }
+  function cls(n) { const v = num(n); if (!v) return "flat"; return v > 0 ? "up" : "down"; }
   function px(n) {
-    const v = Number(n);
-    if (!Number.isFinite(v) || v <= 0) return "—";
-    if (v >= 1) return "$" + v.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
-    return "$" + Number(v).toPrecision(4);
+    const v = num(n); if (!v || v <= 0) return "—";
+    if (v >= 1) return "$" + v.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+    if (v >= 0.0001) return "$" + v.toPrecision(4);
+    const zeros = Math.floor(-Math.log10(v)); // 2.881e-05 -> 4 zeros after "0."
+    const SUB = "₀₁₂₃₄₅₆₇₈₉";
+    const sub = String(zeros).split("").map((d) => SUB[Number(d)]).join("");
+    const digits = (v * Math.pow(10, zeros + 4)).toFixed(0).slice(0, 4);
+    return "$0.0" + sub + digits;
+  }
+  function compact(n) { const v = num(n); if (v == null) return "—"; if (v >= 1e6) return "$" + (v / 1e6).toFixed(1) + "M"; if (v >= 1e3) return "$" + Math.round(v / 1e3) + "k"; return "$" + Math.round(v); }
+  function hhmm(t) { const ms = typeof t === "number" ? t : Date.parse(t || ""); if (!Number.isFinite(ms)) return "--:--"; return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: TZ, hour12: false }).format(new Date(ms)); }
+  function dur(ms) { if (!Number.isFinite(ms) || ms < 0) return "—"; const m = Math.floor(ms / 60000); const h = Math.floor(m / 60); return h ? h + "h " + (m % 60) + "m" : m + "m"; }
+  function clock(ms) { if (!Number.isFinite(ms) || ms < 0) return "--:--"; const m = Math.floor(ms / 60000); return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }
+  function trunc(s, n) { s = String(s || ""); return s.length > n ? s.slice(0, n - 1) + "···" : s; }
+  const PALETTE = ["#3ddc84", "#4da3ff", "#f5b041", "#c084fc", "#ff7a6b", "#2dd4bf", "#facc15"];
+  function hashColor(s) { let h = 0; for (const c of String(s || "")) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PALETTE[h % PALETTE.length]; }
+  function icon(mint, sym, lg) {
+    const m = meta[mint] || {};
+    const c = "ci" + (lg ? " lg" : "");
+    const init = esc(String(sym || "?").replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase() || "?");
+    if (m.img) return '<img class="' + c + '" src="' + esc(m.img) + '" alt="" loading="lazy" onerror="this.outerHTML=\'<span class=&quot;' + c + '&quot; style=&quot;background:' + hashColor(mint) + '&quot;>' + init + '</span>\'">';
+    return '<span class="' + c + '" style="background:' + hashColor(mint) + '">' + init + "</span>";
   }
 
-  function pnlText(usd, pct) {
-    if (usd == null || Number.isNaN(Number(usd))) return "—";
-    const u = Number(usd);
-    const sign = u > 0 ? "+" : (u < 0 ? "−" : "");
-    let out = sign + "$" + money(Math.abs(u)).slice(1);
-    if (pct != null && !Number.isNaN(Number(pct))) {
-      const p = Number(pct);
-      const ps = (p > 0 ? "+" : (p < 0 ? "−" : "")) + Math.abs(p).toFixed(2) + "%";
-      out += " · " + ps;
-    }
-    return out;
-  }
-
-  function pnlClass(v) {
-    const n = Number(v);
-    if (!Number.isFinite(n) || n === 0) return "";
-    return n > 0 ? "up" : "down";
-  }
-
-  function setLiveDot(state) {
-    const el = document.getElementById("live-dot");
-    if (!el) return;
-    el.classList.remove("on", "off", "stale");
-    el.classList.add(state || "off");
-  }
-
-  function setTab(name) {
-    document.querySelectorAll(".tab-panel").forEach((el) => {
-      el.classList.toggle("hidden", el.id !== "tab-" + name);
-    });
-    document.querySelectorAll(".tabbar button").forEach((b) => {
-      b.classList.toggle("on", b.dataset.tab === name);
-    });
-  }
-
-  function showError(msg) {
-    const el = document.getElementById("error");
-    if (!msg) { el.classList.add("hidden"); el.textContent = ""; return; }
-    el.textContent = msg;
-    el.classList.remove("hidden");
-  }
-
-  function showLogin(needed) {
-    const panel = document.getElementById("login-panel");
-    if (!panel) return;
-    panel.classList.toggle("hidden", !needed);
-  }
-
-  function formatWhen(iso) {
-    if (!iso) return "unknown time";
-    const t = Date.parse(iso);
-    if (!Number.isFinite(t)) return iso;
-    const dt = new Date(t);
-    const time = new Intl.DateTimeFormat("en-GB", {
-      hour: "2-digit", minute: "2-digit", timeZone: "Europe/Amsterdam", hour12: false
-    }).format(dt);
-    const mins = Math.max(0, Math.round((Date.now() - t) / 60000));
-    if (mins < 1) return time + " CET (just now)";
-    if (mins === 1) return time + " CET (1 min ago)";
-    return time + " CET (" + mins + " min ago)";
-  }
-
-  function isStale(iso) {
-    const t = Date.parse(iso || "");
-    if (!Number.isFinite(t)) return false;
-    return (Date.now() - t) > STALE_AFTER_MS;
-  }
-
-  let range = "LIVE";
-  let lastState = null;
-  let lastChart = null;
-  let lastPositions = null;
-  let lastLivePrices = {};
-  let lastLiveAt = 0;
-  let liveChartExtra = [];
+  /* ---------- state ---------- */
+  let lastState = null, lastChart = null, lastPositions = null, lastActivity = [];
+  let lastLivePrices = {}, lastLiveAt = 0, liveChartExtra = [];
   let openCoinMint = null;
-  const DEX_TOKENS = "https://api.dexscreener.com/tokens/v1/solana/";
+  const meta = {}; // mint -> {img, liq, mcap}
 
+  function showError(msg) { const el = $("error"); if (!msg) { el.classList.add("hidden"); el.textContent = ""; return; } el.textContent = msg; el.classList.remove("hidden"); }
+  function showLogin(needed) { $("login-panel").classList.toggle("hidden", !needed); }
+  function setTab(name) { document.querySelectorAll(".tab-panel").forEach((el) => el.classList.toggle("hidden", el.id !== "tab-" + name)); window.scrollTo(0, 0); }
+  function setLiveDot(state) { const el = $("live-dot"); el.classList.remove("on", "off", "stale"); el.classList.add(state || "off"); }
+  function isStale(iso) { const t = Date.parse(iso || ""); return Number.isFinite(t) && (Date.now() - t) > STALE_AFTER_MS; }
 
-  function renderState(s) {
-    lastState = s;
-    document.getElementById("balance").textContent = money(s.balance);
-    const today = Number(s.todayPct) || 0;
-    const todayEl = document.getElementById("today");
-    todayEl.textContent = (today >= 0 ? "+" : "") + today.toFixed(2) + "%";
-    todayEl.style.color = today < 0 ? "#ff453a" : "rgba(235,235,245,0.6)";
-    document.getElementById("multiplier").textContent = (Number(s.multiplier) || 0).toFixed(2) + "×";
-    const badge = document.getElementById("paper-badge");
-    badge.classList.toggle("hidden", s.mode !== "PAPER");
-    const snapshotFresh = !!(s.updatedAt) && (Date.now() - Date.parse(s.updatedAt) <= AGENTS_FRESH_MS);
-    const agents = (s.agents || []).map((a) => {
-      const running = snapshotFresh && a.status === "running";
-      return Object.assign({}, a, { status: running ? "running" : "idle" });
-    });
-    const running = agents.filter((a) => a.status === "running").length;
-    document.getElementById("agents-running").textContent = running + " running";
-    const car = document.getElementById("agent-carousel");
-    car.innerHTML = agents.map((a) => (
-      '<article class="agent-card">' +
-        '<h3><span class="dot"></span>' + a.name + '</h3>' +
-        '<div class="sub">' + (a.subtitle || "") + '</div>' +
-      '</article>'
-    )).join("");
-    const full = document.getElementById("agents-full");
-    if (!agents.length) {
-      full.innerHTML = '<div class="activity empty">No agent cards yet</div>';
-    } else {
-      full.innerHTML = agents.map((a) => (
-        '<article class="card agent-full">' +
-          '<div class="row"><span><span class="dot"></span> ' + a.name +
-          '</span><strong>' + (a.status || "") + '</strong></div>' +
-          '<div class="sub">' + (a.subtitle || "") + '</div>' +
-        '</article>'
-      )).join("");
-    }
-    document.getElementById("acct-mode").textContent = s.mode;
-    document.getElementById("acct-stack").textContent = money(s.balance);
-  }
-
-  function filterPoints(pts, rangeName) {
-    const list = pts || [];
-    if (!rangeName || rangeName === "LIVE" || rangeName === "ALL") return list;
-    const ms = { "1H": 3600e3, "4H": 4 * 3600e3, "1D": 24 * 3600e3, "1W": 7 * 24 * 3600e3 }[rangeName];
-    if (!ms) return list;
-    const cutoff = Date.now() - ms;
-    return list.filter((p) => {
-      const t = Date.parse(p.t || p.ts || "");
-      return Number.isFinite(t) && t >= cutoff;
-    });
-  }
-
-  function renderChart(c) {
-    lastChart = c;
-    const pts0 = (c && c.points) || [];
+  function allPositions() { return [].concat((lastPositions && lastPositions.open) || [], (lastPositions && lastPositions.closed) || []); }
+  function symOf(mint) { const r = allPositions().find((x) => x.mint === mint); return r ? r.symbol : null; }
+  function nameOf(mint) { const r = allPositions().find((x) => x.mint === mint); return r ? r.name : null; }
+  function startValue() { return lastChart && lastChart.startValue != null ? Number(lastChart.startValue) : null; }
+  function chartPoints() {
+    const base = (lastChart && lastChart.points) || [];
     let lastT = 0;
-    if (pts0.length) {
-      const parsed = Date.parse(pts0[pts0.length - 1].t || pts0[pts0.length - 1].ts || "");
-      if (Number.isFinite(parsed)) lastT = parsed;
-    }
+    if (base.length) { const p = Date.parse(base[base.length - 1].t || ""); if (Number.isFinite(p)) lastT = p; }
     liveChartExtra = liveChartExtra.filter((p) => Date.parse(p.t) > lastT);
-    const pts = filterPoints(pts0.concat(range === "LIVE" ? liveChartExtra : []), range);
-    const empty = document.getElementById("chart-empty");
-    if (pts.length === 0) empty.classList.remove("hidden");
-    else empty.classList.add("hidden");
-    window.drawHomeChart(document.getElementById("home-chart"), pts, c && c.startValue);
+    return base.concat(liveChartExtra);
+  }
+  function agentsWithStatus() {
+    const s = lastState || {};
+    const fresh = !!s.updatedAt && (Date.now() - Date.parse(s.updatedAt) <= AGENTS_FRESH_MS);
+    return (s.agents || []).map((a) => Object.assign({}, a, { live: fresh && a.status === "running" }));
+  }
+  function agent(id) { return agentsWithStatus().find((a) => a.id === id) || null; }
+
+  /* ---------- render: header + balance + chart ---------- */
+  function renderTop() {
+    const s = lastState || {};
+    const mtm = num(s.balance);
+    const start = startValue();
+    const pts = chartPoints();
+    const firstT = pts.length ? Date.parse(pts[0].t) : NaN;
+    const agents = agentsWithStatus();
+    const active = agents.filter((a) => a.live).length;
+
+    $("mode-pill").textContent = (s.mode || "PAPER").toLowerCase() + " mode";
+    $("head-sub").textContent = "scanning new pairs · via telegram · " + (Number.isFinite(firstT) ? Math.max(0, Math.floor((Date.now() - firstT) / 3600000)) + "h in" : "—");
+
+    const bal = $("balance");
+    if (mtm == null) bal.innerHTML = '<span class="int">$—</span>';
+    else {
+      const neg = mtm < 0, a = Math.abs(mtm);
+      const int = Math.floor(a), dec = Math.round((a - int) * 100);
+      const intS = (neg ? "−$" : "$") + int.toLocaleString("en-US");
+      bal.innerHTML = '<span class="int">' + intS + '</span><span class="dec">.' + String(dec === 100 ? 99 : dec).padStart(2, "0") + "</span>";
+    }
+
+    // change over the last hour of balance points
+    const dp = $("delta-pill");
+    let ref1h = null;
+    const cutoff = Date.now() - 3600000;
+    for (const p of pts) { const t = Date.parse(p.t); if (t <= cutoff) ref1h = Number(p.v); else break; }
+    if (ref1h == null && pts.length) ref1h = Number(pts[0].v);
+    if (mtm != null && ref1h != null) {
+      const d = mtm - ref1h;
+      dp.textContent = (d >= 0 ? "+" : "−") + "$" + Math.abs(d).toFixed(Math.abs(d) >= 100 ? 0 : 2);
+      dp.className = "pill pill-delta " + cls(d); dp.title = "change over the last hour";
+    } else { dp.textContent = "—"; dp.className = "pill pill-delta flat"; }
+
+    const pos = allPositions();
+    $("in-pill").textContent = "in " + (start != null ? money(start, 0) : "—") + " · " + pos.length + " trade" + (pos.length === 1 ? "" : "s");
+    $("multiplier").textContent = (mtm != null && start) ? (mtm / start).toFixed(2) + "×" : "—×";
+    const pl = $("pnl-line");
+    if (mtm != null && start != null) { const d = mtm - start; pl.textContent = signed(d) + " · " + active + " agent" + (active === 1 ? "" : "s") + " active"; pl.className = cls(d) === "flat" ? "flat" : cls(d); }
+    else { pl.textContent = active + " agents active"; pl.className = "flat"; }
+    $("elapsed").textContent = Number.isFinite(firstT) ? clock(Date.now() - firstT) : "--:--";
+    $("elapsed").title = "running time";
+    // Chart window: from 15 min before tonight's first trade (else the last 2h), so the moves are readable.
+    const opens = allPositions().map((r) => Date.parse(r.opened_at || "")).filter(Number.isFinite);
+    let winStart = opens.length ? Math.min.apply(null, opens) - 15 * 60000 : Date.now() - 2 * 3600000;
+    let view = pts.filter((p) => Date.parse(p.t) >= winStart);
+    if (view.length < 2) { view = pts.slice(-2); }
+    const viewT0 = view.length ? Date.parse(view[0].t) : NaN;
+    $("chart-t0").textContent = Number.isFinite(viewT0) ? hhmm(viewT0) : "--:--";
+    $("chart-empty").classList.toggle("hidden", pts.length > 0);
+    window.drawHomeChart($("home-chart"), view, start);
+    $("acct-stack").textContent = money(mtm);
+    $("acct-mode").textContent = s.mode || "PAPER";
   }
 
-  function renderActivity(rows) {
-    const home = document.getElementById("activity-home");
-    const full = document.getElementById("activity-full");
-    const list = rows || [];
-    if (!list.length) {
-      home.className = "activity empty";
-      home.textContent = "Nothing yet tonight";
-      full.className = "activity empty";
-      full.textContent = "Nothing yet tonight";
+  /* ---------- ticker ---------- */
+  function renderTicker() {
+    const el = $("ticker");
+    const pos = allPositions().slice().sort((a, b) => Date.parse(b.opened_at || "") - Date.parse(a.opened_at || ""));
+    if (!pos.length) { el.__key = ""; el.className = "ticker-track still"; el.innerHTML = '<span class="ticker-empty">waiting for first signal · scanner listening</span>'; return; }
+    const key = pos.map((r) => r.mint + ":" + ((meta[r.mint] || {}).img ? 1 : 0)).join(",");
+    if (el.__key === key) {
+      el.querySelectorAll("[data-pm]").forEach((sp) => { const r = pos.find((x) => x.mint === sp.getAttribute("data-pm")); if (r) { sp.textContent = pct(r.pnl_pct); sp.className = "pct " + cls(r.pnl_pct); } });
       return;
     }
-    const html = list.map((r) => {
-      const kind = String(r.kind || "event").toLowerCase();
-      const val = r.value || "";
-      const trimmed = String(val).trim();
-      const down = /^-|−/.test(trimmed);
-      const up = /^\+/.test(trimmed);
-      const amtClass = down ? "down" : (up ? "up" : "");
-      return '<div class="card"><div class="row"><span>' +
-        '<span class="kind ' + esc(kind) + '">' + esc(kind) + '</span>' +
-        esc(r.title || kind) +
-        '<div class="sub">' + esc(r.subtitle || "") + '</div>' +
-        '</span><strong class="amt ' + amtClass + '">' + esc(val) + '</strong></div></div>';
-    }).join("");
-    home.className = "activity";
-    home.innerHTML = html;
-    full.className = "activity";
-    full.innerHTML = html;
+    el.__key = key;
+    const chips = pos.map((r) => '<span class="chip">' + icon(r.mint, r.symbol) + "<span>$" + esc(r.symbol) + '</span><span data-pm="' + esc(r.mint) + '" class="pct ' + cls(r.pnl_pct) + '">' + pct(r.pnl_pct) + "</span></span>").join("");
+    const reps = Math.max(1, Math.ceil(8 / pos.length));
+    const half = new Array(reps).fill(chips).join("");
+    const html = half + half;
+    el.innerHTML = html;
+    el.className = "ticker-track";
+    el.style.animationDuration = Math.max(20, reps * pos.length * 5) + "s";
   }
 
+  /* ---------- agent cards ---------- */
+  function setDot(id, on) { const d = $(id); if (d) d.classList.toggle("on", !!on); }
+  function renderAgents() {
+    const agents = agentsWithStatus();
+    const ids = ["scanner", "auditor", "analyst", "executor", "risk"];
+    ids.forEach((id) => { const a = agent(id); setDot("dot-" + id, a && a.live); });
+    const active = agents.filter((a) => a.live).length;
+    $("agents-meta").textContent = active + "/" + (agents.length || 5) + " agents → risk";
+
+    // Scanner: coins the desk picked up tonight, newest first.
+    const sc = agent("scanner");
+    const picks = allPositions().slice().sort((a, b) => Date.parse(b.opened_at || "") - Date.parse(a.opened_at || "")).slice(0, 3);
+    $("scanner-rows").innerHTML = picks.length ? picks.map((r) => {
+      const m = meta[r.mint] || {};
+      return '<div class="r">' + icon(r.mint, r.symbol) + '<span class="nm">' + esc(trunc(r.name, 12)) + '</span><span class="meta">#' + esc(r.id) + " · liq " + (m.liq != null ? compact(m.liq) : "—") + "</span>" +
+        '<span class="rt"><span class="' + cls(r.pnl_pct) + '">' + pct(r.pnl_pct) + "</span><small>" + money(r.size, 0) + "</small></span></div>";
+    }).join("") : '<div class="empty">waiting for first signal</div>';
+    $("scanner-foot").textContent = sc ? (sc.subtitle || "—") : "—";
+
+    // Telegram feed: paper buys, sells, stops, declines from desk events.
+    const rows = lastActivity || [];
+    $("feed-count").textContent = "· " + rows.length + " event" + (rows.length === 1 ? "" : "s");
+    $("feed-rows").innerHTML = rows.length ? rows.slice(0, 5).map((r) => {
+      const k = String(r.kind || "").toLowerCase();
+      const sym = symOf(r.mint) || (r.title || "").replace(/^\w+\s+/, "");
+      const val = String(r.value || "").split("·")[0].trim();
+      return '<div class="r"><span class="meta" style="flex:0 0 52px">' + esc(r.agent || "desk") + '</span><span class="v-' + esc(k) + '" style="flex:0 0 52px">' + esc(k) + '</span><span class="sym nm">$' + esc(trunc(sym, 12)) + '</span><span class="rt ' + (/^[-−]/.test(val) ? "down" : "") + '">' + esc(val) + "</span></div>";
+    }).join("") : '<div class="empty">waiting for first signal</div>';
+
+    // Rug check (auditor)
+    const au = agent("auditor");
+    const am = String((au && au.subtitle) || "").match(/(\d+)\s+taken apart\s*·\s*(\d+)\s+rejected/);
+    const nAud = am ? Number(am[1]) : 0, nRej = am ? Number(am[2]) : 0;
+    $("rug-big").textContent = String(nRej);
+    $("rug-sub").textContent = "rejected · " + Math.max(0, nAud - nRej) + " passed";
+    window.drawSpark($("spark-rug"), am ? [0, nAud - nRej, nAud] : [], "#3ddc84");
+
+    // Execution: paper fills
+    const trades = allPositions().slice().sort((a, b) => Date.parse(a.opened_at || "") - Date.parse(b.opened_at || ""));
+    const ex = agent("executor");
+    const nT = ex && ex.count != null ? Number(ex.count) : trades.length;
+    const avg = trades.length ? trades.reduce((s, r) => s + (Number(r.size) || 0), 0) / trades.length : null;
+    $("exec-big").textContent = String(nT);
+    $("exec-sub").textContent = "paper fills · avg " + (avg != null ? money(avg, 0) : "—");
+    window.drawSpark($("spark-exec"), trades.map((r) => r.size), "#4da3ff");
+
+    // Risk
+    const rk = agent("risk");
+    const open = (lastPositions && lastPositions.open) || [];
+    const closed = (lastPositions && lastPositions.closed) || [];
+    const stopPct = (open[0] && open[0].stop_pct) || ((String((rk && rk.subtitle) || "").match(/stop -(\d+(?:\.\d+)?)%/) || [])[1]);
+    const stops = closed.filter((r) => r.reason === "stop").length;
+    $("risk-big").textContent = stopPct != null ? "−" + Number(stopPct).toFixed(0) + "%" : "—";
+    $("risk-sub").textContent = "stop · " + stops + " stop" + (stops === 1 ? "" : "s") + " hit";
+    let cum = 0; const series = [0].concat(closed.slice().sort((a, b) => Date.parse(a.closed_at || "") - Date.parse(b.closed_at || "")).map((r) => (cum += Number(r.pnl) || 0)));
+    window.drawSpark($("spark-risk"), series.length > 1 ? series : [], "#f5b041");
+  }
+
+  /* ---------- decisions log ---------- */
+  const KIND = { bought: "BUY", sold: "SELL", stopped: "STOP", rejected: "SKIP" };
+  function logRows(rows, limit) {
+    return rows.slice(0, limit).map((r) => {
+      const k = KIND[String(r.kind || "").toLowerCase()] || "NOTE";
+      const sym = symOf(r.mint);
+      const nm = nameOf(r.mint) || (r.title || "").replace(/^\w+\s+/, "");
+      const val = String(r.value || "").split("·")[0].trim();
+      const vcls = /^[-−]/.test(val) ? "down" : (/^\+/.test(val) ? "up" : "muted");
+      return '<div class="l"><span class="t">' + hhmm(r.ts) + '</span><span class="k k-' + k + '">' + k + '</span><span class="s">' + (sym ? "$" + esc(sym) + " " : "") + '<span class="muted">' + esc(trunc(nm, 16)) + "</span></span>" +
+        '<span class="x ' + vcls + '">' + esc(val) + "</span></div>";
+    }).join("");
+  }
+  function renderDecisions() {
+    const rows = lastActivity || [];
+    const an = agent("analyst");
+    const tail = an && an.subtitle ? '<div class="l"><span class="t">' + hhmm(lastState && lastState.updatedAt) + '</span><span class="k k-SCAN">SCAN</span><span class="s muted">' + esc(an.subtitle) + "</span></div>" : "";
+    $("decisions").innerHTML = rows.length ? tail + logRows(rows, 8) : (tail || '<div class="empty">waiting for first signal</div>');
+    $("activity-full").innerHTML = rows.length ? logRows(rows, 50) : '<div class="empty">nothing yet tonight</div>';
+    $("act-count").textContent = rows.length ? rows.length + " events" : "";
+  }
+
+  /* ---------- positions ---------- */
+  function renderPositions() {
+    const open = (lastPositions && lastPositions.open) || [];
+    const closed = (lastPositions && lastPositions.closed) || [];
+    $("open-positions").innerHTML = open.length ? open.map((r) => {
+      const k = cls(r.pnl);
+      return '<button type="button" class="card pos" data-mint="' + esc(r.mint) + '"><div class="pos-top">' + icon(r.mint, r.symbol, true) +
+        '<div><div class="nm">' + esc(r.name) + '</div><div class="meta">$' + esc(r.symbol) + " · " + money(r.size, 0) + (r.trail_active ? ' · <span class="pos-tag trail">trailing</span>' : "") + "</div></div>" +
+        '<div class="pnl ' + k + '">' + signed(r.pnl) + "<small>" + pct(r.pnl_pct) + "</small></div></div>" +
+        '<div class="pos-grid"><div>entry<b>' + px(r.entry) + "</b></div><div>live<b>" + px(r.price) + "</b></div><div>stop<b>" + px(r.stop) + (r.stop_pct != null ? " <span class=\"muted\">−" + Number(r.stop_pct).toFixed(0) + "%</span>" : "") + "</b></div><div>held<b>" + dur(Date.now() - Date.parse(r.opened_at || "")) + "</b></div></div></button>";
+    }).join("") : '<div class="card empty">no open positions</div>';
+    const cl = closed.slice().sort((a, b) => Date.parse(b.closed_at || "") - Date.parse(a.closed_at || ""));
+    const tot = cl.reduce((s, r) => s + (Number(r.pnl) || 0), 0);
+    $("closed-meta").innerHTML = cl.length ? cl.length + " · <span class=\"" + cls(tot) + "\">" + signed(tot) + "</span>" : "";
+    $("closed-positions").innerHTML = cl.length ? cl.map((r) => {
+      const k = cls(r.pnl);
+      return '<button type="button" class="card pos" data-mint="' + esc(r.mint) + '"><div class="pos-top">' + icon(r.mint, r.symbol, true) +
+        '<div><div class="nm">' + esc(r.name) + '</div><div class="meta">$' + esc(r.symbol) + " · " + hhmm(r.closed_at) + ' · <span class="pos-tag">' + esc(r.reason || "closed") + "</span></div></div>" +
+        '<div class="pnl ' + k + '">' + signed(r.pnl) + "<small>" + pct(r.pnl_pct) + "</small></div></div>" +
+        '<div class="pos-grid"><div>size<b>' + money(r.size, 0) + "</b></div><div>entry<b>" + px(r.entry) + "</b></div><div>exit<b>" + px(r.exit) + "</b></div><div>fees<b>" + (r.fees != null ? money(r.fees) : "—") + "</b></div></div></button>";
+    }).join("") : '<div class="card empty">no closed trades today</div>';
+    if (openCoinMint) renderCoin(openCoinMint);
+  }
+
+  function renderCoin(mint) {
+    openCoinMint = mint;
+    const row = allPositions().find((r) => r.mint === mint);
+    if (!row) { $("coin-empty").classList.remove("hidden"); $("coin-heading").innerHTML = ""; $("coin-detail").innerHTML = ""; return; }
+    $("coin-empty").classList.add("hidden");
+    const closed = !!row.closed_at, k = cls(row.pnl);
+    $("coin-heading").innerHTML = icon(row.mint, row.symbol, true) + "<span>" + esc(row.name) + '</span><span class="meta">$' + esc(row.symbol) + "</span>";
+    const lines = closed
+      ? [["size", money(row.size)], ["entry", px(row.entry)], ["exit", px(row.exit)], ["pnl", signed(row.pnl) + " · " + pct(row.pnl_pct)], ["reason", row.reason || "closed"]]
+      : [["size", money(row.size)], ["entry", px(row.entry)], ["live", px(row.price)], ["pnl", signed(row.pnl) + " · " + pct(row.pnl_pct)], ["stop", px(row.stop)]];
+    const m = meta[row.mint] || {};
+    if (m.liq != null) lines.push(["liquidity", compact(m.liq)]);
+    $("coin-detail").innerHTML = '<article class="card">' + lines.map((x) => '<div class="kv"><span class="muted">' + esc(x[0]) + '</span><b class="' + (x[0] === "pnl" ? k : "") + '">' + esc(x[1]) + "</b></div>").join("") + "</article>";
+    const candles = (row.candles || []).slice();
+    if (row.price && !closed) candles.push({ t: new Date().toISOString(), v: row.price });
+    $("coin-t0").textContent = candles.length ? hhmm(candles[0].t) : "";
+    window.drawPriceChart($("coin-chart"), candles, row.entry);
+  }
+  function openCoin(mint) { if (!mint) return; setTab("coin"); renderCoin(mint); }
+
+  function renderAll() { renderTop(); renderTicker(); renderAgents(); renderDecisions(); renderPositions(); }
+
+  /* ---------- live MTM (DexScreener, 10s) ---------- */
   function recomputeMtm(pos, prices) {
     const settled = Number(pos && pos.settled != null ? pos.settled : (lastState && lastState.settled));
     let unreal = 0;
     const open = ((pos && pos.open) || []).map((row) => {
-      const live = prices && prices[row.mint] != null ? prices[row.mint] : row.price;
       const next = Object.assign({}, row);
+      const live = prices && prices[row.mint] != null ? prices[row.mint] : row.price;
       if (live != null) next.price = live;
       if (next.price && next.entry) {
         next.pnl = Number(next.size) * (Number(next.price) / Number(next.entry) - 1);
@@ -283,240 +336,99 @@
       return next;
     });
     const base = Number.isFinite(settled) ? settled : 0;
-    return {
-      settled: base,
-      mtm: Number((base + unreal).toFixed(4)),
-      open: open,
-      closed: (pos && pos.closed) || [],
-    };
+    return { settled: base, mtm: Number((base + unreal).toFixed(4)), open: open, closed: (pos && pos.closed) || [] };
   }
-
-  function applyEquity(mtm, start) {
-    const el = document.getElementById("balance");
-    if (el) el.textContent = money(mtm);
-    const startV = start != null ? Number(start) : (lastChart && lastChart.startValue);
-    const todayEl = document.getElementById("today");
-    if (todayEl && startV) {
-      const today = (mtm - startV) / startV * 100;
-      todayEl.textContent = (today >= 0 ? "+" : "") + today.toFixed(2) + "%";
-      todayEl.style.color = today < 0 ? "#ff453a" : "rgba(235,235,245,0.6)";
-      const mul = document.getElementById("multiplier");
-      if (mul) mul.textContent = (mtm / startV).toFixed(2) + "×";
-    }
-    const stack = document.getElementById("acct-stack");
-    if (stack) stack.textContent = money(mtm);
-    if (lastState) lastState.balance = mtm;
+  function applyLive() {
+    if (!(Date.now() - lastLiveAt < 15000 && Object.keys(lastLivePrices).length)) return false;
+    const eq = recomputeMtm(lastPositions, lastLivePrices);
+    lastPositions = Object.assign({}, lastPositions, { open: eq.open, closed: eq.closed, mtm: eq.mtm });
+    if (lastState) lastState.balance = eq.mtm;
+    return eq.mtm;
   }
-
-  function appendLiveChart(mtm) {
-    if (range !== "LIVE") return;
-    const start = lastChart && lastChart.startValue;
-    const base = (lastChart && lastChart.points) ? lastChart.points.slice() : [];
-    liveChartExtra.push({ t: new Date().toISOString(), v: mtm });
-    if (liveChartExtra.length > 360) liveChartExtra = liveChartExtra.slice(-360);
-    const pts = filterPoints(base.concat(liveChartExtra), "LIVE");
-    window.drawHomeChart(document.getElementById("home-chart"), pts, start);
-    const empty = document.getElementById("chart-empty");
-    if (empty) empty.classList.toggle("hidden", pts.length > 0);
-  }
-
-  function renderPositions(data) {
-    lastPositions = data || lastPositions;
-    const openEl = document.getElementById("open-positions");
-    const closedEl = document.getElementById("closed-positions");
-    if (!openEl || !closedEl) return;
-    const open = (data && data.open) || [];
-    const closed = (data && data.closed) || [];
-    if (!open.length) {
-      openEl.className = "pos-list empty";
-      openEl.textContent = "No open positions";
-    } else {
-      openEl.className = "pos-list";
-      openEl.innerHTML = open.map((r) => {
-        const k = pnlClass(r.pnl);
-        const stopPct = r.stop_pct != null ? " (−" + Number(r.stop_pct).toFixed(0) + "%)" : "";
-        return '<button type="button" class="pos-card" data-mint="' + esc(r.mint) + '">' +
-          '<div class="pos-top"><div><span class="pos-name">' + esc(r.name) + '</span><span class="pos-sym">' + esc(r.symbol) + '</span></div>' +
-          '<div class="pos-pnl ' + k + '">' + esc(pnlText(r.pnl, r.pnl_pct)) + '</div></div>' +
-          '<div class="pos-grid">' +
-          '<div>Size <b>' + esc(money(r.size)) + '</b></div>' +
-          '<div>Entry <b>' + esc(px(r.entry)) + '</b></div>' +
-          '<div>Live <b>' + esc(px(r.price)) + '</b></div>' +
-          '<div>Stop <b>' + esc(px(r.stop)) + esc(stopPct) + '</b></div>' +
-          '</div></button>';
-      }).join("");
-    }
-    if (!closed.length) {
-      closedEl.className = "pos-list empty";
-      closedEl.textContent = "No closed trades today";
-    } else {
-      closedEl.className = "pos-list";
-      const rows = closed.slice().reverse();
-      closedEl.innerHTML = rows.map((r) => {
-        const k = pnlClass(r.pnl);
-        return '<button type="button" class="pos-card" data-mint="' + esc(r.mint) + '">' +
-          '<div class="pos-top"><div><span class="pos-name">' + esc(r.name) + '</span><span class="pos-sym">' + esc(r.symbol) + '</span></div>' +
-          '<div class="pos-pnl ' + k + '">' + esc(pnlText(r.pnl, r.pnl_pct)) + '</div></div>' +
-          '<div class="pos-grid">' +
-          '<div>Size <b>' + esc(money(r.size)) + '</b></div>' +
-          '<div>Entry <b>' + esc(px(r.entry)) + '</b></div>' +
-          '<div>Exit <b>' + esc(px(r.exit)) + '</b></div>' +
-          '<div>PnL <b class="' + k + '">' + esc(pnlText(r.pnl, r.pnl_pct)) + '</b></div>' +
-          '</div>' +
-          '<div class="pos-reason">' + esc(r.reason || "closed") + '</div></button>';
-      }).join("");
-    }
-    if (openCoinMint) renderCoin(openCoinMint);
-  }
-
-  function renderCoin(mint) {
-    openCoinMint = mint;
-    const empty = document.getElementById("coin-empty");
-    const heading = document.getElementById("coin-heading");
-    const detail = document.getElementById("coin-detail");
-    const all = [].concat((lastPositions && lastPositions.open) || []).concat((lastPositions && lastPositions.closed) || []);
-    const row = all.find((r) => r.mint === mint);
-    if (!row) {
-      if (empty) empty.classList.remove("hidden");
-      if (heading) heading.innerHTML = "";
-      if (detail) detail.innerHTML = "";
-      return;
-    }
-    if (empty) empty.classList.add("hidden");
-    if (heading) {
-      heading.innerHTML = '<span class="pos-name">' + esc(row.name) + '</span><span class="pos-sym">' + esc(row.symbol) + '</span>';
-    }
-    const k = pnlClass(row.pnl);
-    const closed = !!row.closed_at;
-    const lines = closed ? [
-      ["Size", money(row.size)], ["Entry", px(row.entry)], ["Exit", px(row.exit)],
-      ["PnL", pnlText(row.pnl, row.pnl_pct)], ["Reason", row.reason || "closed"],
-    ] : [
-      ["Size", money(row.size)], ["Entry", px(row.entry)], ["Live", px(row.price)],
-      ["PnL", pnlText(row.pnl, row.pnl_pct)], ["Stop", px(row.stop)],
-    ];
-    if (detail) {
-      detail.innerHTML = '<div class="pos-card"><div class="pos-grid">' +
-        lines.map((x) => '<div>' + esc(x[0]) + ' <b class="' + (x[0] === "PnL" ? k : "") + '">' + esc(x[1]) + '</b></div>').join("") +
-        "</div></div>";
-    }
-    const candles = (row.candles || []).slice();
-    if (row.price && !closed) candles.push({ t: new Date().toISOString(), v: row.price });
-    if (window.drawPriceChart) {
-      window.drawPriceChart(document.getElementById("coin-chart"), candles, row.entry);
-    }
-  }
-
-  function openCoin(mint) {
-    if (!mint) return;
-    setTab("coin");
-    renderCoin(mint);
-  }
-
-  function priceFromDex(body, mint) {
-    const want = String(mint || "").toLowerCase();
+  function readDex(body) {
     const list = Array.isArray(body) ? body : ((body && body.pairs) || []);
-    let best = null, bestLiq = -1;
-    for (let i = 0; i < list.length; i++) {
-      const p = list[i] || {};
-      const addr = String(((p.baseToken) || {}).address || "").toLowerCase();
-      if (addr !== want) continue;
+    const best = {};
+    for (const p of list) {
+      const addr = String(((p && p.baseToken) || {}).address || "");
+      if (!addr) continue;
       const liq = Number(((p.liquidity) || {}).usd) || 0;
       const v = Number(p.priceUsd);
-      if (v > 0 && liq >= bestLiq) { bestLiq = liq; best = v; }
+      if (!best[addr] || liq >= best[addr].liq) best[addr] = { liq: liq, price: v > 0 ? v : null, img: (p.info && p.info.imageUrl) || (best[addr] && best[addr].img) || null };
+      else if (!best[addr].img && p.info && p.info.imageUrl) best[addr].img = p.info.imageUrl;
     }
     return best;
   }
-
   async function tickLivePrices() {
-    const open = (lastPositions && lastPositions.open) || [];
-    if (!open.length) { setLiveDot("off"); return; }
-    const mints = open.map((r) => r.mint).filter(Boolean);
+    const all = allPositions();
+    if (!all.length) { setLiveDot("off"); return; }
+    const openMints = ((lastPositions && lastPositions.open) || []).map((r) => r.mint);
+    const mints = Array.from(new Set(openMints.concat(all.map((r) => r.mint).filter((m) => !meta[m])))).filter(Boolean).slice(0, 30);
+    if (!mints.length) { setLiveDot("off"); return; }
     try {
       const r = await fetch(DEX_TOKENS + mints.join(","), { cache: "no-store" });
       if (!r.ok) throw new Error("dex " + r.status);
-      const body = await r.json();
+      const best = readDex(await r.json());
       const prices = {};
-      for (let i = 0; i < open.length; i++) {
-        const v = priceFromDex(body, open[i].mint);
-        if (v) prices[open[i].mint] = v;
+      for (const m of mints) {
+        const b = best[m] || Object.keys(best).map((k) => k.toLowerCase() === m.toLowerCase() ? best[k] : null).find(Boolean);
+        if (!b) { if (!meta[m]) meta[m] = {}; continue; }
+        meta[m] = { liq: b.liq, img: b.img || (meta[m] && meta[m].img) || null };
+        if (b.price && openMints.includes(m)) prices[m] = b.price;
       }
-      if (!Object.keys(prices).length) { setLiveDot("stale"); return; }
+      if (!openMints.length) { setLiveDot("off"); renderAll(); return; }
+      if (!Object.keys(prices).length) { setLiveDot("stale"); renderAll(); return; }
       lastLivePrices = Object.assign({}, lastLivePrices, prices);
       lastLiveAt = Date.now();
-      const eq = recomputeMtm(lastPositions, lastLivePrices);
-      lastPositions = Object.assign({}, lastPositions, eq, { open: eq.open, closed: eq.closed, mtm: eq.mtm });
-      renderPositions(lastPositions);
-      applyEquity(eq.mtm, lastChart && lastChart.startValue);
-      appendLiveChart(eq.mtm);
+      const mtm = applyLive();
+      if (mtm !== false) { liveChartExtra.push({ t: new Date().toISOString(), v: mtm }); if (liveChartExtra.length > 360) liveChartExtra = liveChartExtra.slice(-360); }
+      renderAll();
       setLiveDot("on");
-    } catch (err) {
-      setLiveDot("stale");
-    }
+    } catch (err) { setLiveDot("stale"); }
   }
 
-
+  /* ---------- account ---------- */
   function renderAccount(acct) {
-    const mode = document.getElementById("acct-mode");
-    const stack = document.getElementById("acct-stack");
-    const profile = document.getElementById("acct-profile");
-    const invite = document.getElementById("acct-invite");
-    const tg = document.getElementById("acct-tg");
-    if (!acct) {
-      if (tg) tg.textContent = "unavailable";
-      const err = document.getElementById("acct-error");
-      if (err) { err.textContent = "Account data missing"; err.classList.remove("hidden"); }
-      return;
-    }
-    const err = document.getElementById("acct-error");
-    if (err) { err.textContent = ""; err.classList.add("hidden"); }
-    if (mode) mode.textContent = acct.mode || (lastState && lastState.mode) || "PAPER";
-    if (stack) stack.textContent = money(acct.stack);
-    if (profile) {
-      profile.href = acct.profile_url || "#";
-      profile.setAttribute("rel", "noopener");
-    }
-    if (invite) {
-      invite.href = acct.signup_url || "#";
-      invite.setAttribute("rel", "noopener");
-      invite.onclick = function (ev) {
-        const url = acct.signup_url;
-        if (navigator.share && url) {
-          ev.preventDefault();
-          navigator.share({ title: "FOMO", url: url }).catch(() => {
-            try { navigator.clipboard.writeText(url); } catch (e) {}
-          });
-        }
-      };
-    }
-    if (tg) tg.textContent = acct.telegram ? "connected" : "not connected";
+    const err = $("acct-error");
+    if (!acct) { $("acct-tg").textContent = "unavailable"; err.textContent = "Account data missing"; err.classList.remove("hidden"); return; }
+    err.textContent = ""; err.classList.add("hidden");
+    $("acct-mode").textContent = acct.mode || (lastState && lastState.mode) || "PAPER";
+    $("acct-stack").textContent = money(lastState && lastState.balance != null ? lastState.balance : acct.stack);
+    const profile = $("acct-profile"), invite = $("acct-invite");
+    profile.href = acct.profile_url || "#";
+    invite.href = acct.signup_url || "#";
+    invite.onclick = function (ev) {
+      const url = acct.signup_url;
+      if (navigator.share && url) { ev.preventDefault(); navigator.share({ title: "FOMO", url: url }).catch(() => { try { navigator.clipboard.writeText(url); } catch (e) {} }); }
+    };
+    $("acct-tg").textContent = acct.telegram ? "connected" : "not connected";
   }
 
+  /* ---------- loading ---------- */
   async function api(path) {
     const r = await fetch(path, { headers: headers(), cache: "no-store" });
     if (r.status === 401) throw Object.assign(new Error("unauthorized"), { status: 401 });
     if (!r.ok) throw Object.assign(new Error("http " + r.status), { status: r.status });
     return r.json();
   }
-
   async function loadJson(url) {
     const r = await fetch(url, { headers: { "Accept": "application/json" }, cache: "no-store" });
     if (!r.ok) throw Object.assign(new Error("http " + r.status), { status: r.status });
     return r.json();
   }
-
+  function ingest(s, c, a, p) {
+    lastState = s; lastChart = c; lastActivity = (a && a.rows) || []; lastPositions = p || { open: [], closed: [] };
+    applyLive();
+    renderAll();
+  }
+  let refreshing = false;
   async function refresh() {
+    if (refreshing) return; refreshing = true;
     try {
       const d = dataPath();
-      if (!d && !token()) {
-        showLogin(true);
-        showError("No login saved. Paste the login link from Telegram.");
-        return;
-      }
+      if (!d && !token()) { showLogin(true); showError("No login saved. Paste the login link from Telegram."); return; }
       if (d) {
         showLogin(false);
-        let s, c, a;
-        let p;
+        let s, c, a, p;
         try {
           [s, c, a, p] = await Promise.all([
             loadJson(dataUrl("state.json")),
@@ -525,137 +437,47 @@
             loadJson(dataUrl("positions.json")).catch(() => ({ open: [], closed: [] })),
           ]);
         } catch (err) {
-          if (err && err.status === 404) {
-            showLogin(true);
-            showError("Data not found (404). Paste the login link from Telegram again.");
-            return;
-          }
+          if (err && err.status === 404) { showLogin(true); showError("Data not found (404). Paste the login link from Telegram again."); return; }
           throw err;
         }
-        renderState(s);
-        renderChart(c);
-        renderActivity((a && a.rows) || []);
-        renderPositions(p || { open: [], closed: [] });
+        ingest(s, c, a, p);
         if (!lastLiveAt) tickLivePrices();
-        if (Date.now() - lastLiveAt < 15000 && Object.keys(lastLivePrices).length) {
-          const eq = recomputeMtm(lastPositions, lastLivePrices);
-          lastPositions = Object.assign({}, lastPositions, eq, { open: eq.open, closed: eq.closed, mtm: eq.mtm });
-          renderPositions(lastPositions);
-          applyEquity(eq.mtm, c && c.startValue);
-        }
         loadJson(dataUrl("account.json")).then(renderAccount).catch(() => renderAccount(null));
-        if (isStale(s && s.updatedAt)) {
-          const t0 = Date.parse(s.updatedAt);
-          const hhmm = Number.isFinite(t0)
-            ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Amsterdam", hour12: false }).format(new Date(t0))
-            : "unknown";
-          showError("Desk paused since " + hhmm + ", resumes automatically");
-        } else {
-          showError("");
-        }
+        if (isStale(s && s.updatedAt)) showError("Desk paused since " + hhmm(s.updatedAt) + " CET, resumes automatically");
+        else showError("");
         return;
       }
       showLogin(false);
       const [s, c, a, p] = await Promise.all([
-        api("/api/state"),
-        api("/api/chart?range=" + encodeURIComponent(range)),
-        api("/api/activity").catch(() => ({ rows: [] })),
-        api("/api/positions").catch(() => ({ open: [], closed: [] })),
+        api("/api/state"), api("/api/chart?range=LIVE"),
+        api("/api/activity").catch(() => ({ rows: [] })), api("/api/positions").catch(() => ({ open: [], closed: [] })),
       ]);
-      renderState(s);
-      renderChart(c);
-      renderActivity((a && a.rows) || []);
-      renderPositions(p || { open: [], closed: [] });
+      ingest(s, c, a, p);
       showError("");
     } catch (e) {
-      const when = lastState && lastState.updatedAt ? lastState.updatedAt : null;
-      if (when) showError("Desk offline · retrying in 5s · last update " + formatWhen(when));
-      else showError("Desk offline · retrying in 5s · last update unknown");
-    }
-  }
-
-  async function loadAccount() {
-    try {
-      const d = dataPath();
-      let a;
-      if (d) {
-        a = await loadJson(dataUrl("account.json"));
-      } else if (token()) {
-        a = await api("/api/account");
-      } else {
-        return;
-      }
-      const prof = document.getElementById("acct-profile");
-      const inv = document.getElementById("acct-invite");
-      if (a.profile_url) prof.href = a.profile_url;
-      if (a.signup_url) inv.href = a.signup_url;
-      document.getElementById("acct-tg").textContent = a.telegram ? "connected" : "not";
-      document.getElementById("acct-mode").textContent = a.mode;
-      document.getElementById("acct-stack").textContent = money(a.stack);
-    } catch (e) {}
+      const when = lastState && lastState.updatedAt;
+      showError("Desk offline · retrying in 5s · last update " + (when ? hhmm(when) + " CET" : "unknown"));
+    } finally { refreshing = false; }
   }
 
   function onSaveLogin() {
-    const input = document.getElementById("login-link");
-    const raw = input ? input.value : "";
-    if (!saveDataPath(raw)) {
-      showError("That did not look like a login link. Paste the full Telegram link.");
-      showLogin(true);
-      return;
-    }
-    if (input) input.value = "";
-    showLogin(false);
-    showError("");
-    refresh();
-    loadAccount();
+    const input = $("login-link");
+    if (!saveDataPath(input ? input.value : "")) { showError("That did not look like a login link. Paste the full Telegram link."); showLogin(true); return; }
+    input.value = ""; showLogin(false); showError(""); refresh();
   }
 
+  /* ---------- wiring ---------- */
   captureFromHash();
-  document.querySelectorAll(".tabbar button").forEach((b) => {
-    b.addEventListener("click", () => {
-      setTab(b.dataset.tab);
-      if (b.dataset.tab === "account") loadAccount();
-    });
-  });
-  document.getElementById("btn-account").addEventListener("click", () => {
-    setTab("account");
-    loadAccount();
-  });
-  document.getElementById("ranges").addEventListener("click", (ev) => {
-    const b = ev.target.closest("button[data-range]");
-    if (!b) return;
-    range = b.dataset.range;
-    document.querySelectorAll("#ranges button").forEach((x) => x.classList.toggle("on", x === b));
-    refresh();
-  });
-  const saveBtn = document.getElementById("login-save");
-  const loginInput = document.getElementById("login-link");
-  if (saveBtn) saveBtn.addEventListener("click", onSaveLogin);
-  if (loginInput) {
-    loginInput.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter") {
-        ev.preventDefault();
-        onSaveLogin();
-      }
-    });
-  }
-  window.addEventListener("resize", () => { if (lastChart) renderChart(lastChart); });
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register(new URL("sw.js?v=6", pageBase()).href).catch(() => {});
-  }
-  function onPosClick(ev) {
-    const btn = ev.target.closest("button.pos-card[data-mint]");
-    if (btn) openCoin(btn.getAttribute("data-mint"));
-  }
-  const openEl = document.getElementById("open-positions");
-  const closedEl = document.getElementById("closed-positions");
-  if (openEl) openEl.addEventListener("click", onPosClick);
-  if (closedEl) closedEl.addEventListener("click", onPosClick);
-  const back = document.getElementById("coin-back");
-  if (back) back.addEventListener("click", () => { openCoinMint = null; setTab("home"); });
+  $("login-save").addEventListener("click", onSaveLogin);
+  $("login-link").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); onSaveLogin(); } });
+  $("btn-account").addEventListener("click", () => { setTab("account"); if (dataPath()) loadJson(dataUrl("account.json")).then(renderAccount).catch(() => renderAccount(null)); });
+  document.querySelectorAll("[data-home]").forEach((b) => b.addEventListener("click", () => { openCoinMint = null; setTab("home"); renderTop(); }));
+  ["open-positions", "closed-positions"].forEach((id) => $(id).addEventListener("click", (ev) => { const b = ev.target.closest("[data-mint]"); if (b) openCoin(b.getAttribute("data-mint")); }));
+  let rz = 0; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(renderAll, 120); });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { refresh(); tickLivePrices(); } });
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register(new URL("sw.js?v=7", pageBase()).href).catch(() => {});
 
   refresh();
   setInterval(refresh, 5000);
-  tickLivePrices();
   setInterval(tickLivePrices, 10000);
 })();

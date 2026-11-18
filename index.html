@@ -7,109 +7,141 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Grok Bot">
-  <meta name="theme-color" content="#000000">
-  <title>Grok Bot</title>
-  <link rel="manifest" href="manifest.json?v=6">
+  <meta name="theme-color" content="#0a0d0c">
+  <title>trencher desk</title>
+  <link rel="manifest" href="manifest.json?v=7">
+  <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="app.css?v=6">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="app.css?v=7">
 </head>
 <body>
-  <div id="error" class="error hidden" role="status"></div>
-  <section id="login-panel" class="login-panel hidden">
-    <label for="login-link">Paste the login link from Telegram</label>
-    <p class="login-hint">The Home Screen app does not keep the Safari login. Paste the link once.</p>
+  <div class="ticker" aria-label="coins"><div class="ticker-track" id="ticker"></div></div>
+
+  <div id="error" class="banner hidden" role="status"></div>
+  <section id="login-panel" class="card login-panel hidden">
+    <label for="login-link">paste the login link from telegram</label>
+    <p class="muted">The home-screen app does not keep the Safari login. Paste the link once.</p>
     <div class="login-row">
-      <input id="login-link" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste the Telegram link here">
-      <button type="button" id="login-save">Save</button>
+      <input id="login-link" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…#d=…">
+      <button type="button" id="login-save">save</button>
     </div>
   </section>
-  <header class="navbar">
-    <button class="avatar" id="btn-account" aria-label="Account" type="button"></button>
-    <div class="brand">Grok Bot ›</div>
-    <div class="nav-right">
-      <button class="icon-btn" id="btn-search" aria-label="Search" type="button">⌕</button>
-      <button class="icon-btn bell" id="btn-bell" aria-label="Notifications" type="button">
-        <span class="bell-dot hidden" id="bell-dot"></span>
-      </button>
-    </div>
-  </header>
 
   <main id="tab-home" class="tab-panel">
-    <section class="balance-block">
-      <div class="balance-row">
-        <div id="balance" class="balance">$200.00</div>
-        <span id="paper-badge" class="paper-badge">PAPER</span>
+    <header class="head">
+      <div class="head-row">
+        <img class="logo" src="icons/icon-192.png" alt="">
+        <span class="title">trencher desk</span>
+        <span class="pill pill-mode" id="mode-pill">paper mode</span>
+        <button type="button" class="head-btn" id="btn-account" aria-label="account">⋯</button>
       </div>
-      <div class="meta-row">
-        <span id="today" class="today">+0.00%</span>
-        <span id="multiplier" class="multiplier">1.00×</span>
+      <div class="sub" id="head-sub">scanning new pairs · via telegram · —</div>
+    </header>
+
+    <section class="bal">
+      <div class="bal-row">
+        <div class="balance" id="balance"><span class="int">$—</span><span class="dec"></span></div>
+        <span class="pill pill-delta" id="delta-pill">—</span>
+      </div>
+      <div class="pills">
+        <span class="pill pill-outline" id="in-pill">in — · — trades</span>
+        <span class="pill pill-white" id="multiplier">—×</span>
+      </div>
+      <div class="bal-foot">
+        <span id="pnl-line" class="up">—</span>
+        <span id="elapsed" class="muted">--:--</span>
       </div>
     </section>
-    <section class="chart-wrap">
-      <canvas id="home-chart" width="358" height="180" aria-label="Paper balance chart"></canvas>
-      <div id="chart-empty" class="chart-empty hidden">Waiting for the first trade</div>
-      <div class="ranges" id="ranges">
-        <button type="button" data-range="LIVE" class="on">LIVE</button>
-        <button type="button" data-range="1H">1H</button>
-        <button type="button" data-range="4H">4H</button>
-        <button type="button" data-range="1D">1D</button>
-        <button type="button" data-range="1W">1W</button>
-        <button type="button" data-range="ALL">ALL</button>
+
+    <section class="chart-box">
+      <canvas id="home-chart" aria-label="paper balance chart"></canvas>
+      <div id="chart-empty" class="chart-empty hidden">waiting for first signal</div>
+      <div class="chart-axis">
+        <span id="chart-t0">--:--</span>
+        <span class="legend"><i class="lg-solid"></i>value <i class="lg-dash"></i>put in</span>
       </div>
     </section>
-    <section id="positions-wrap">
-      <h2>Open positions <span id="live-dot" class="live-dot off" title="live prices"><span class="live-pip"></span> live prices</span></h2>
-      <div id="open-positions" class="pos-list empty">No open positions</div>
-      <h2 id="closed-heading">Closed today</h2>
-      <div id="closed-positions" class="pos-list empty">No closed trades today</div>
-    </section>
-    <section>
-      <h2>Agents · <span id="agents-running">0 running</span></h2>
-      <div id="agent-carousel" class="carousel"></div>
-    </section>
-    <section>
-      <h2>Activity · See all</h2>
-      <div id="activity-home" class="activity empty">Nothing yet tonight</div>
-    </section>
+
+    <div class="sec-head"><span>desk agents</span><span class="muted" id="agents-meta">5 agents → risk</span></div>
+
+    <article class="card">
+      <div class="card-head"><span><b class="star">★</b> Scanner · new pairs</span><span class="dot" id="dot-scanner"></span></div>
+      <div id="scanner-rows" class="rows"><div class="empty">waiting for first signal</div></div>
+      <div class="card-foot muted" id="scanner-foot">—</div>
+    </article>
+
+    <article class="card">
+      <div class="card-head"><span>Telegram feed</span><span class="muted" id="feed-count">· 0 messages</span></div>
+      <div id="feed-rows" class="rows"><div class="empty">waiting for first signal</div></div>
+    </article>
+
+    <div class="stats">
+      <article class="card stat">
+        <div class="stat-top"><span class="badge">R</span><span class="dot" id="dot-auditor"></span></div>
+        <div class="stat-label">Rug check</div>
+        <div class="stat-big" id="rug-big">—</div>
+        <div class="stat-sub muted" id="rug-sub">rejected · — passed</div>
+        <canvas class="spark" id="spark-rug"></canvas>
+      </article>
+      <article class="card stat">
+        <div class="stat-top"><span class="badge">E</span><span class="dot blue" id="dot-executor"></span></div>
+        <div class="stat-label">Execution</div>
+        <div class="stat-big" id="exec-big">—</div>
+        <div class="stat-sub muted" id="exec-sub">avg fill · — trades</div>
+        <canvas class="spark" id="spark-exec"></canvas>
+      </article>
+      <article class="card stat">
+        <div class="stat-top"><span class="badge">!</span><span class="dot amber" id="dot-risk"></span></div>
+        <div class="stat-label">Risk</div>
+        <div class="stat-big" id="risk-big">—</div>
+        <div class="stat-sub muted" id="risk-sub">stop · — stops hit</div>
+        <canvas class="spark" id="spark-risk"></canvas>
+      </article>
+    </div>
+
+    <article class="card">
+      <div class="card-head"><span>Grok core · decisions</span><span class="dot" id="dot-analyst"></span></div>
+      <div id="decisions" class="log"><div class="empty">waiting for first signal</div></div>
+    </article>
+
+    <div class="sec-head"><span>open positions</span><span class="muted"><span id="live-dot" class="live off"><i></i>live prices</span></span></div>
+    <div id="open-positions" class="pos-list"><div class="card empty">no open positions</div></div>
+
+    <div class="sec-head"><span>closed today</span><span class="muted" id="closed-meta"></span></div>
+    <div id="closed-positions" class="pos-list"><div class="card empty">no closed trades today</div></div>
+
+    <div class="foot muted" id="foot">paper only · read-only · settings via telegram</div>
   </main>
 
-  <main id="tab-agents" class="tab-panel hidden">
-    <div id="agents-full"></div>
-  </main>
-  <main id="tab-activity" class="tab-panel hidden">
-    <div id="activity-full" class="activity empty">Nothing yet tonight</div>
-  </main>
   <main id="tab-account" class="tab-panel hidden">
-    <div class="card">
-      <div class="row"><span>Mode</span><strong id="acct-mode">PAPER</strong></div>
-      <div class="row"><span>Stack</span><strong id="acct-stack">$200.00</strong></div>
-      <a class="row" id="acct-profile" href="#" rel="noopener">Your FOMO profile</a>
-      <a class="row" id="acct-invite" href="#" rel="noopener">Invite a friend</a>
-      <div class="row"><span>Telegram</span><strong id="acct-tg">—</strong></div>
-    </div>
-    <p id="acct-error" class="error hidden" role="status"></p>
-    <p class="acct-note">This tab is read-only. Settings, pause and mode are changed through Telegram commands.</p>
-    <p class="acct-note" id="acct-webpush-note">Web push is not available on GitHub Pages (Telegram only).</p>
+    <button type="button" class="back" data-home>‹ desk</button>
+    <article class="card">
+      <div class="kv"><span class="muted">mode</span><b id="acct-mode">PAPER</b></div>
+      <div class="kv"><span class="muted">stack</span><b id="acct-stack">—</b></div>
+      <div class="kv"><span class="muted">telegram</span><b id="acct-tg">—</b></div>
+      <a class="kv link" id="acct-profile" href="#" rel="noopener"><span>your FOMO profile</span><b>›</b></a>
+      <a class="kv link" id="acct-invite" href="#" rel="noopener"><span>invite a friend</span><b>›</b></a>
+    </article>
+    <p id="acct-error" class="banner hidden" role="status"></p>
+    <p class="foot muted">Read-only. Settings, pause and mode are changed through Telegram commands. Web push is not available on GitHub Pages (Telegram only).</p>
+    <div class="sec-head"><span>all activity</span><span class="muted" id="act-count"></span></div>
+    <article class="card"><div id="activity-full" class="log"><div class="empty">nothing yet tonight</div></div></article>
   </main>
+
   <main id="tab-coin" class="tab-panel hidden">
-    <button type="button" id="coin-back" class="back-btn">‹ Home</button>
+    <button type="button" class="back" data-home id="coin-back">‹ desk</button>
     <div id="coin-heading" class="coin-heading"></div>
-    <section class="chart-wrap">
-      <canvas id="coin-chart" width="358" height="180" aria-label="Coin price chart"></canvas>
+    <section class="chart-box"><canvas id="coin-chart" aria-label="coin price chart"></canvas>
+      <div class="chart-axis"><span id="coin-t0"></span><span class="legend"><i class="lg-solid"></i>price <i class="lg-dash"></i>entry</span></div>
     </section>
     <div id="coin-detail"></div>
-    <div id="coin-empty" class="activity empty">Search a name, symbol or mint. Coin screen without a position has no exit card.</div>
-    <div id="coin-error" class="error hidden" role="status"></div>
+    <div id="coin-empty" class="card empty hidden">coin not in tonight's positions</div>
   </main>
 
-  <nav class="tabbar">
-    <button type="button" class="on" data-tab="home">Home</button>
-    <button type="button" data-tab="agents">Agents</button>
-    <button type="button" data-tab="activity">Activity</button>
-    <button type="button" data-tab="account">Account</button>
-  </nav>
-
-  <script src="chart.js?v=6"></script>
-  <script src="app.js?v=6"></script>
+  <script src="chart.js?v=7"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

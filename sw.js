@@ -1,5 +1,5 @@
-/* desk-static-v6: network-first; never cache /d/ data (including 404s). */
-const CACHE = "desk-static-v6";
+/* desk-static-v7: network-first; never cache /d/ data (including 404s). */
+const CACHE = "desk-static-v7";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
@@ -46,6 +46,8 @@ async function networkFirstData(request) {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
+  // Live prices and other cross-origin calls go straight to the network.
+  try { if (new URL(req.url).origin !== self.location.origin && !/fonts\.(googleapis|gstatic)\.com$/.test(new URL(req.url).hostname)) return; } catch (e) { return; }
   if (isDataRequest(req.url)) {
     event.respondWith(networkFirstData(req));
     return;
