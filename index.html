@@ -9,9 +9,9 @@
   <meta name="apple-mobile-web-app-title" content="Grok Bot">
   <meta name="theme-color" content="#000000">
   <title>Grok Bot</title>
-  <link rel="manifest" href="manifest.json?v=4">
+  <link rel="manifest" href="manifest.json?v=5">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="app.css?v=4">
+  <link rel="stylesheet" href="app.css?v=5">
 </head>
 <body>
   <div id="error" class="error hidden" role="status"></div>
@@ -81,7 +81,13 @@
       <a class="row" id="acct-invite" href="#" rel="noopener">Invite a friend</a>
       <div class="row"><span>Telegram</span><strong id="acct-tg">—</strong></div>
     </div>
+    <p id="acct-error" class="error hidden" role="status"></p>
     <p class="acct-note">This tab is read-only. Settings, pause and mode are changed through Telegram commands.</p>
+    <p class="acct-note" id="acct-webpush-note">Web push is not available on GitHub Pages (Telegram only).</p>
+  </main>
+  <main id="tab-coin" class="tab-panel hidden">
+    <div id="coin-empty" class="activity empty">Search a name, symbol or mint. Coin screen without a position has no exit card.</div>
+    <div id="coin-error" class="error hidden" role="status"></div>
   </main>
 
   <nav class="tabbar">
@@ -91,7 +97,7 @@
     <button type="button" data-tab="account">Account</button>
   </nav>
 
-  <script src="chart.js?v=4"></script>
-  <script src="app.js?v=4"></script>
+  <script src="chart.js?v=5"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

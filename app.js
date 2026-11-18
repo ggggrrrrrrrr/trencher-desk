@@ -150,10 +150,17 @@
       '</article>'
     )).join("");
     const full = document.getElementById("agents-full");
-    full.innerHTML = agents.map((a) => (
-      '<div class="card"><div class="row"><span>' + a.name +
-      '</span><strong>' + (a.status || "") + '</strong></div></div>'
-    )).join("");
+    if (!agents.length) {
+      full.innerHTML = '<div class="activity empty">No agent cards yet</div>';
+    } else {
+      full.innerHTML = agents.map((a) => (
+        '<article class="card agent-full">' +
+          '<div class="row"><span><span class="dot"></span> ' + a.name +
+          '</span><strong>' + (a.status || "") + '</strong></div>' +
+          '<div class="sub">' + (a.subtitle || "") + '</div>' +
+        '</article>'
+      )).join("");
+    }
     document.getElementById("acct-mode").textContent = s.mode;
     document.getElementById("acct-stack").textContent = money(s.balance);
   }
@@ -193,12 +200,50 @@
     const html = list.map((r) => (
       '<div class="card"><div class="row"><span>' +
       (r.title || r.kind || "event") +
-      '</span><strong>' + (r.value || r.subtitle || "") + '</strong></div></div>'
+      '<div class="sub">' + (r.subtitle || "") + '</div>' +
+      '</span><strong>' + (r.value || "") + '</strong></div></div>'
     )).join("");
     home.className = "activity";
     home.innerHTML = html;
     full.className = "activity";
     full.innerHTML = html;
+  }
+
+
+  function renderAccount(acct) {
+    const mode = document.getElementById("acct-mode");
+    const stack = document.getElementById("acct-stack");
+    const profile = document.getElementById("acct-profile");
+    const invite = document.getElementById("acct-invite");
+    const tg = document.getElementById("acct-tg");
+    if (!acct) {
+      if (tg) tg.textContent = "unavailable";
+      const err = document.getElementById("acct-error");
+      if (err) { err.textContent = "Account data missing"; err.classList.remove("hidden"); }
+      return;
+    }
+    const err = document.getElementById("acct-error");
+    if (err) { err.textContent = ""; err.classList.add("hidden"); }
+    if (mode) mode.textContent = acct.mode || (lastState && lastState.mode) || "PAPER";
+    if (stack) stack.textContent = money(acct.stack);
+    if (profile) {
+      profile.href = acct.profile_url || "#";
+      profile.setAttribute("rel", "noopener");
+    }
+    if (invite) {
+      invite.href = acct.signup_url || "#";
+      invite.setAttribute("rel", "noopener");
+      invite.onclick = function (ev) {
+        const url = acct.signup_url;
+        if (navigator.share && url) {
+          ev.preventDefault();
+          navigator.share({ title: "FOMO", url: url }).catch(() => {
+            try { navigator.clipboard.writeText(url); } catch (e) {}
+          });
+        }
+      };
+    }
+    if (tg) tg.textContent = acct.telegram ? "connected" : "not connected";
   }
 
   async function api(path) {
@@ -242,8 +287,13 @@
         renderState(s);
         renderChart(c);
         renderActivity((a && a.rows) || []);
+        loadJson(dataUrl("account.json")).then(renderAccount).catch(() => renderAccount(null));
         if (isStale(s && s.updatedAt)) {
-          showError("Data is stale · last update " + formatWhen(s.updatedAt));
+          const t0 = Date.parse(s.updatedAt);
+          const hhmm = Number.isFinite(t0)
+            ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Amsterdam", hour12: false }).format(new Date(t0))
+            : "unknown";
+          showError("Desk paused since " + hhmm + ", resumes automatically");
         } else {
           showError("");
         }
@@ -261,8 +311,8 @@
       showError("");
     } catch (e) {
       const when = lastState && lastState.updatedAt ? lastState.updatedAt : null;
-      if (when) showError("Can't reach desk data · last update " + formatWhen(when) + ". Retrying in 5s.");
-      else showError("Can't reach desk data. Retrying in 5s.");
+      if (when) showError("Desk offline · retrying in 5s · last update " + formatWhen(when));
+      else showError("Desk offline · retrying in 5s · last update unknown");
     }
   }
 
@@ -333,7 +383,7 @@
   }
   window.addEventListener("resize", () => { if (lastChart) renderChart(lastChart); });
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register(new URL("sw.js?v=4", pageBase()).href).catch(() => {});
+    navigator.serviceWorker.register(new URL("sw.js?v=5", pageBase()).href).catch(() => {});
   }
   refresh();
   setInterval(refresh, 5000);
