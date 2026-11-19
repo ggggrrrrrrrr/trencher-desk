@@ -287,8 +287,9 @@
   function setDot(id, on) { const d = $(id); if (d) d.classList.toggle("on", !!on); }
   function renderAgents() {
     const agents = agentsWithStatus();
-    const ids = ["scanner", "auditor", "analyst", "executor", "risk"];
+    const ids = ["scanner", "analyst", "brain", "executor", "risk"];  // v2.0: 5 bots
     ids.forEach((id) => { const a = agent(id); setDot("dot-" + id, a && a.live); });
+    { const an = agent("analyst"); setDot("dot-auditor", an && an.live); }  // Auditor = Analyst's 8-layer stage
     const active = agents.filter((a) => a.live).length;
     $("agents-meta").textContent = active + "/" + (agents.length || 5) + " agents → risk";
 
@@ -324,7 +325,7 @@
     }).join("") : '<div class="empty">waiting for first signal</div>';
 
     // Rug check (auditor)
-    const au = agent("auditor");
+    const au = agent("analyst");
     const am = String((au && au.subtitle) || "").match(/(\d+)\s+taken apart\s*·\s*(\d+)\s+rejected/);
     let nRej = am ? Number(am[2]) : 0, nPass = am ? Math.max(0, Number(am[1]) - Number(am[2])) : 0;
     if (M && M.auditorRejected != null) { nRej = Number(M.auditorRejected); nPass = Number(M.auditorPassed || 0); }
@@ -428,7 +429,7 @@
     $("coin-t0").textContent = candles.length ? hhmm(candles[0].t) : "";
     window.drawPriceChart($("coin-chart"), candles, row.entry);
   }
-  function openCoin(mint) { if (!mint) return; setTab("coin"); renderCoin(mint); }
+  function openCoin(mint) { if (!mint) return; setTab("coin"); renderCoin(mint); if (window.deskBots) window.deskBots.coin(mint); }
 
   function renderAll() { renderTop(); renderTicker(); renderAgents(); renderDecisions(); renderPositions(); renderRecap(); }
 
@@ -638,6 +639,11 @@
     cv.addEventListener("mouseleave", end);
   }
 
+  /* ---------- v2 bridge for bots.js (Bots / Activity tabs, Audit + Coin screens) ---------- */
+  window.deskData = { dataUrl: dataUrl, dataPath: dataPath, token: token, api: api, loadJson: loadJson,
+    setTab: setTab, openCoin: openCoin, esc: esc, hhmm: hhmm, money: money, signed: signed, icon: icon,
+    activity: () => lastActivity || [], state: () => lastState };
+
   /* ---------- wiring ---------- */
   wireScrub();
   wirePush();
@@ -651,7 +657,7 @@
   let rz = 0; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(renderAll, 120); });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { refresh(); tickLivePrices(); } });
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register(new URL("sw.js?v=10", pageBase()).href, { updateViaCache: "none" }).then((reg) => {
+    navigator.serviceWorker.register(new URL("sw.js?v=13", pageBase()).href, { updateViaCache: "none" }).then((reg) => {
       const check = () => reg.update().catch(() => {});
       check(); setInterval(check, 5 * 60 * 1000);
       document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); });

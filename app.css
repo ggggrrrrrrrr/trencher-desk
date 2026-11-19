@@ -193,3 +193,25 @@ main{padding:0 16px;max-width:520px;margin:0 auto}
 .recap-big b{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
 .recap-big small{font-size:11px;font-variant-numeric:tabular-nums}
 .recap .kv b{font-variant-numeric:tabular-nums;text-align:right}
+
+/* v2.0 PART 4: tab bar, Bots tab, Audit discs, sell sheet, PAPER badge */
+:root{--scanner:#0a84ff;--analyst:#30d158;--brain:#bf5af2;--executor:#ff9f0a;--risk:#ff453a}
+body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+.tabbar{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(10,13,12,.94);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:20;backdrop-filter:blur(12px)}
+.tabbar button{flex:1;min-height:52px;border:0;background:transparent;color:var(--dim);font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.tabbar button.on{color:var(--txt)}
+.pill-paper{background:#ff9f0a22;color:#ff9f0a;border:1px solid #ff9f0a66;font-weight:800;letter-spacing:.04em}
+.bot-card{border-left:3px solid var(--c,#888);cursor:pointer}
+.bot-card .bot-sub{font-size:12px;margin-top:4px}
+.bot-card .bot-st{font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.screen-off{display:flex;align-items:center;justify-content:center;aspect-ratio:16/10;border-radius:10px;border:1px dashed var(--line);color:var(--dim);font-weight:700;margin:8px 0}
+.discs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+.disc{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;text-align:center;color:var(--dim)}
+.disc i{width:28px;height:28px;border-radius:50%;display:block;background:#333}
+.disc.ok i{background:#30d158}.disc.red i{background:#ff453a}.disc.unknown i{background:#555}
+.shield{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.shield.ok{background:#30d15833;color:#30d158}.shield.red{background:#ff453a33;color:#ff453a}.shield.unknown,.shield.partial{background:#ffffff14;color:var(--dim)}
+.sell-sheet .row{display:flex;gap:8px;margin-top:8px}
+.sell-sheet button{flex:1;min-height:44px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--txt);font:inherit;font-weight:700}
+.dec-row{display:flex;gap:8px;font-size:12px;padding:6px 0;border-bottom:1px solid var(--line)}
+.dec-row .t{flex:0 0 42px;color:var(--dim)}.dec-row .d{flex:0 0 90px}.dec-row .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

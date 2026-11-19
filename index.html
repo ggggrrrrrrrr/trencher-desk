@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="app.css?v=11">
+  <link rel="stylesheet" href="app.css?v=12">
 </head>
 <body>
   <div class="ticker" aria-label="coins"><div class="ticker-track" id="ticker"></div></div>
@@ -36,6 +36,7 @@
         <img class="logo" src="icons/icon-192.png" alt="">
         <span class="title">trencher desk</span>
         <span class="pill pill-mode" id="mode-pill">paper mode</span>
+        <span class="pill pill-paper" id="paper-badge">PAPER</span>
         <button type="button" class="head-btn" id="btn-account" aria-label="account">⋯</button>
       </div>
       <div class="sub" id="head-sub">scanning new pairs · via telegram · —</div>
@@ -70,7 +71,7 @@
     <div class="sec-head"><span>night shift</span><button type="button" class="link-btn" id="btn-recap" aria-expanded="false">recap ›</button></div>
     <article id="recap" class="card recap hidden" aria-live="polite"></article>
 
-    <div class="sec-head"><span>desk agents</span><span class="muted" id="agents-meta">5 agents → risk</span></div>
+    <div class="sec-head"><span>desk bots</span><span class="muted" id="agents-meta">5 bots → risk</span></div>
 
     <article class="card">
       <div class="card-head"><span><b class="star">★</b> Scanner · new pairs</span><span class="dot" id="dot-scanner"></span></div>
@@ -152,6 +153,24 @@
     <div class="foot muted" id="foot">paper only · read-only · settings via telegram</div>
   </main>
 
+  <main id="tab-bots" class="tab-panel hidden">
+    <div class="sec-head"><span>bots · v2.0</span><span class="muted" id="bots-meta">scanner → analyst → brain → executor · risk</span></div>
+    <div id="bots-cards"><div class="card empty">loading bots</div></div>
+    <article class="card live-screen" id="live-screen">
+      <div class="card-head"><span>Live screen</span><span class="pill pill-paper">PAPER</span></div>
+      <div class="screen-off" id="screen-off">Browser lane off · PAPER</div>
+      <div class="card-foot muted">No FOMO login on this desk. Paper fills use DexScreener + a free Jupiter quote.</div>
+    </article>
+    <div id="bot-detail" class="hidden"></div>
+  </main>
+
+  <main id="tab-activity" class="tab-panel hidden">
+    <div class="sec-head"><span>activity</span><span class="muted" id="act2-count"></span></div>
+    <article class="card"><div id="activity-v2" class="log"><div class="empty">nothing yet tonight</div></div></article>
+    <div class="sec-head"><span>orders</span><span class="muted">queued → done / skipped</span></div>
+    <article class="card"><div id="orders-v2" class="log"><div class="empty">no orders yet</div></div></article>
+  </main>
+
   <main id="tab-account" class="tab-panel hidden">
     <button type="button" class="back" data-home>‹ desk</button>
     <article class="card">
@@ -185,11 +204,24 @@
       <div class="chart-axis"><span id="coin-t0"></span><span class="legend"><i class="lg-solid"></i>price <i class="lg-dash"></i>entry</span></div>
     </section>
     <div id="coin-detail"></div>
+    <div id="coin-v2"></div>
+    <div class="sec-head"><span>audit</span><span class="muted" id="audit-meta"></span></div>
+    <article class="card" id="audit-card"><div id="audit-discs" class="discs"><div class="empty">no audit for this coin</div></div>
+      <div class="kv"><span class="muted">Social</span><b id="audit-social">Social: off</b></div></article>
+    <div id="sell-sheet" class="card sell-sheet hidden"></div>
     <div id="coin-empty" class="card empty hidden">coin not in tonight's positions</div>
   </main>
 
+  <nav class="tabbar" id="tabbar">
+    <button type="button" data-tab="home" class="on">Home</button>
+    <button type="button" data-tab="bots">Bots</button>
+    <button type="button" data-tab="activity">Activity</button>
+    <button type="button" data-tab="account">Account</button>
+  </nav>
+
   <script src="chart.js?v=10"></script>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
   <script src="copy.js?v=3"></script>
+  <script src="bots.js?v=1"></script>
 </body>
 </html>
