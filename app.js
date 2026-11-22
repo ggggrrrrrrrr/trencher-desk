@@ -133,7 +133,7 @@
       const why = homeTab === "watch" ? "Nog geen munten: zodra een gevolgde trader iets koopt of verkoopt, staat het hier." : chip === "held" ? "De demo heeft nog geen munten gekocht." : "Laden…";
       box.innerHTML = '<div class="empty">' + why + "</div>"; return;
     }
-    box.innerHTML = rows.map((m) => { const t = TOK[m]; const c = t.ch; return '<div class="tr">' + tokIcon(m) + '<div class="nm"><b>' + esc(t.sym || short(m)) + "</b><span>" + kfmt(t.mc) + ' MC</span></div><div class="px"><b class="' + (c > 0 ? "g" : c < 0 ? "r" : "") + '">' + price(t.price) + '</b><span class="' + (c >= 0 ? "g" : "r") + '">' + (c == null ? "" : (c >= 0 ? "▲" : "▼") + Math.abs(c).toFixed(2) + "%") + "</span></div></div>"; }).join("");
+    box.innerHTML = rows.map((m) => { const t = TOK[m]; const c = t.ch; return '<div class="tr">' + tokIcon(m) + '<div class="nm"><b>' + esc(t.sym || short(m)) + "</b><span>" + (t.mc ? kfmt(t.mc) + " MC" : esc(t.name || "")) + '</span></div><div class="px"><b class="' + (c > 0 ? "g" : c < 0 ? "r" : "") + '">' + price(t.price) + '</b><span class="' + (c >= 0 ? "g" : "r") + '">' + (c == null ? "" : (c >= 0 ? "▲" : "▼") + Math.abs(c).toFixed(2) + "%") + "</span></div></div>"; }).join("");
   }
   /* ---------- activity rows ---------- */
   function symOf(a) { const t = TOK[a.mint]; return (a.symbol && !/…$/.test(a.symbol) ? a.symbol : null) || (t && t.sym) || short(a.mint) || "—"; }
@@ -174,7 +174,7 @@
     const acts = (S.activity || []).filter((a) => (a.kind === "copies" || (a.kind === "exits" && a.closed)) && Date.parse(a.ts) >= t0);
     for (const a of acts) { const t = Date.parse(a.ts), x = X(t), y = Y(vAt(t)); const c = a.kind === "copies" ? "#3b82ff" : (a.gain > 0 ? "#34d659" : "#ff453a"); marks += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4.5" fill="' + c + '" stroke="#000" stroke-width="1.5"/>'; }
     const wins = acts.filter((a) => a.kind === "exits" && a.pnl > 0).slice(0, 3);
-    for (const a of wins) { const t = Date.parse(a.ts); labels += '<span class="c-lab" style="left:' + (X(t) / W * 100).toFixed(1) + "%;top:" + (Y(vAt(t)) / H * 100).toFixed(1) + '%">' + esc(symOf(a)) + " " + sMoney(a.pnl).replace(".00", "") + "</span>"; }
+    for (const a of wins) { const t = Date.parse(a.ts); labels += '<span class="c-lab" style="left:' + Math.min(85, Math.max(12, X(t) / W * 100)).toFixed(1) + "%;top:" + (Y(vAt(t)) / H * 100).toFixed(1) + '%">' + esc(symOf(a)) + " " + sMoney(a.pnl).replace(".00", "") + "</span>"; }
     const lx = X(pts[pts.length - 1].t), ly = Y(pts[pts.length - 1].v);
     svg.innerHTML = '<defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34d659" stop-opacity=".22"/><stop offset="1" stop-color="#34d659" stop-opacity="0"/></linearGradient></defs>' +
       '<path d="' + d + " L" + lx.toFixed(1) + " " + H + " L" + X(t0).toFixed(1) + " " + H + ' Z" fill="url(#lg)"/><path d="' + d + '" fill="none" stroke="#34d659" stroke-width="2.4" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>' + marks +
@@ -293,10 +293,10 @@
     let L = "";
     L += '<span class="c-lab blue" style="' + pc(X(t1), Y(e)) + '">Grok Bot +' + (p.lag_s != null ? p.lag_s : S.delay_s) + "s</span>";
     L += '<span class="c-lab blue" style="' + pc(W - 52, Y(e) + 24) + '">entry ' + esc(lab(e)) + "</span>";
-    L += '<span class="c-lab green" style="' + pc(60, Y(lines[0].px) + 20) + '">' + esc(lines[0].t) + "</span>";
-    L += '<span class="c-lab green" style="' + pc(60, Y(lines[1].px) + 20) + '">' + esc(lines[1].t) + "</span>";
-    L += '<span class="c-lab red" style="' + pc(60, Y(lines[2].px) + 20) + '">' + esc(lines[2].t) + "</span>";
-    if (p.leader_entry_usd) L += '<span style="position:absolute;' + pc(X(tL), Y(p.leader_entry_usd) + 30) + ';transform:translate(-50%,0);text-align:center;font-size:11px;color:#fff;font-weight:600">' + av(p.leader, "xs") + "<br>" + esc(p.leader) + "</span>";
+    L += '<span class="c-lab green left" style="' + pc(6, Y(lines[0].px) + 20) + '">' + esc(lines[0].t) + "</span>";
+    L += '<span class="c-lab green left" style="' + pc(6, Y(lines[1].px) + 20) + '">' + esc(lines[1].t) + "</span>";
+    L += '<span class="c-lab red left" style="' + pc(6, Y(lines[2].px) + 20) + '">' + esc(lines[2].t) + "</span>";
+    if (p.leader_entry_usd) L += '<span style="position:absolute;' + pc(Math.max(24, X(tL)), Math.min(H - VH - 30, Y(p.leader_entry_usd) + 14)) + ';transform:translate(-50%,0);text-align:center;font-size:11px;color:#fff;font-weight:600">' + av(p.leader, "xs") + "<br>" + esc(p.leader) + "</span>";
     if (!real) L += '<span style="position:absolute;left:8px;bottom:6px;font-size:11px;color:#6e6e73">koersdata (GeckoTerminal) niet beschikbaar · lijn tussen echte punten</span>';
     $("p-labels").innerHTML = L;
   }
