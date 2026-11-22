@@ -285,7 +285,7 @@
 
   /* ---------- ACTIVITY / ACCOUNT ---------- */
   function renderActivity() { $("a-sub").textContent = "tonight · copying " + S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + " · " + behind(); setH("a-feed").v = feedHtml(S.activity, feedF); }
-  function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = isLive() ? "max " + r.ticket_pct + "% van saldo · max " + r.max_open + " open · min $" + (r.min_trade_usd || 2) + " · " + (r.sol_reserve || 0.02) + " SOL reserve" : r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = "−" + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · same exits"; renderPhantom(); }
+  function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = isLive() ? "max " + r.ticket_pct + "% van saldo · max " + r.max_open + " open · min $" + (r.min_trade_usd || 2) + " · " + (r.sol_reserve || 0.02) + " SOL reserve" : r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = (isLive() ? "noodstop −" : "−") + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · verkoopt als trader verkoopt" + (isLive() && RAW.live_book ? " · stopt alles bij −$" + Number(RAW.live_book.loss_limit || 12.5).toFixed(2) : ""); renderPhantom(); }
   function renderPhantom() {
     const L = RAW && RAW.live_book; const st = $("ph-status"); if (!st) return;
     if (!L) { st.textContent = "Nog geen gegevens"; st.className = "k-on warn"; return; }
