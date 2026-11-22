@@ -6,49 +6,81 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="copy desk">
+  <meta name="apple-mobile-web-app-title" content="Trencher">
   <meta name="theme-color" content="#000000">
-  <title>copy desk</title>
-  <link rel="manifest" href="manifest.json?v=41">
+  <title>Trencher</title>
+  <link rel="manifest" href="manifest.json?v=42">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <link rel="preload" href="app.js?v=41" as="script">
-  <link rel="stylesheet" href="app.css?v=41">
+  <link rel="preload" href="app.js?v=42" as="script">
+  <link rel="stylesheet" href="app.css?v=42">
 </head>
 <body>
 <div id="app">
-  <div id="error" class="banner hidden" role="status"></div>
-  <div class="booksw" id="booksw" role="tablist" aria-label="Boek">
-    <button type="button" data-b="live" class="on"><i class="dot-live"></i>ECHT GELD</button><button type="button" data-b="sim">SIM · demo</button>
+  <div class="topbar" id="topbar">
+    <header class="hdr">
+      <div class="hd-l"><span class="hd-av" aria-hidden="true">T</span><b class="hd-t">Trencher</b><span class="hd-pill" id="hd-open">0 open</span></div>
+      <div class="hd-r num" id="hd-time">--:--</div>
+    </header>
+    <div class="booksw" id="booksw" role="tablist" aria-label="Boek">
+      <button type="button" data-b="live" class="on"><i class="dot-live"></i>ECHT GELD</button><button type="button" data-b="sim">SIM · demo</button>
+    </div>
   </div>
+  <div id="error" class="banner hidden" role="status"></div>
   <section id="login-panel" class="login hidden">
     <div class="login-t">Plak de inloglink uit Telegram</div>
     <div class="row-in"><input id="login-link" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…#d=…"><button type="button" class="btn-blue sm" id="login-save">Opslaan</button></div>
   </section>
 
-  <!-- HOME (wallet) -->
+  <!-- HOME -->
   <main id="s-home" class="screen">
-    <section class="h-top">
-      <div>
-        <div class="bal" id="h-bal">$0<span class="dec">.00</span></div>
-        <div class="sub-ch"><span id="h-ch" class="g">+$0.00</span> <span class="mut">24h</span> <span class="modetag" id="h-mode">ECHT GELD</span></div>
-        <div class="mut xs" id="h-wal"></div>
-      </div>
-      <button type="button" class="pill-blue" id="h-dep-pill">Storten</button>
+    <section class="hero">
+      <div class="bal num" id="l-bal">$0<span class="dec">.00</span></div>
+      <div class="sub-ch"><span id="l-ch" class="g num">▲ $0.00 (+0%)</span><span class="mult num" id="l-mult">1.00x</span><span class="modetag" id="l-mode">SIM</span></div>
+      <div class="mut xs" id="h-wal"></div>
+      <div class="l-copy"><span class="stack" id="l-stack"></span><span class="mut">copying</span><b id="l-n">0 traders</b><span class="mut" id="l-behind"></span><span class="mut" id="l-open">0 open</span></div>
+      <div class="h-actions"><button type="button" class="pill-dep" id="h-dep-pill">Start demo</button>
+        <div class="h-btns hidden" id="h-btns"><button type="button" class="btn-grey" id="h-wd">Opnemen</button><button type="button" class="btn-grey" id="h-dep">Storten</button></div></div>
     </section>
-    <div class="h-btns hidden" id="h-btns">
-      <button type="button" class="btn-grey" id="h-wd">Opnemen</button>
-      <button type="button" class="btn-blue" id="h-dep">Storten</button>
+    <div class="chart-wrap scrub-wrap"><svg id="l-chart" viewBox="0 0 390 190" preserveAspectRatio="none"></svg><div id="l-labels" class="c-labels"></div><div id="l-tip" class="tip num hidden"></div><div id="l-scrub" class="scrub hidden"><i class="sl"></i><b class="sd"></b><span class="st num" id="l-scrub-t"></span></div></div>
+    <div class="tf" id="l-tf">
+      <button type="button" data-r="LIVE" class="on"><i></i>LIVE</button><button type="button" data-r="1H"><i></i>1H</button><button type="button" data-r="4H"><i></i>4H</button><button type="button" data-r="1D"><i></i>1D</button><button type="button" data-r="1W"><i></i>1W</button><button type="button" data-r="ALL"><i></i>ALL</button>
     </div>
-    <div class="sec-t"><svg class="ico" viewBox="0 0 24 24"><path d="M7 4h10v3a5 5 0 0 1-10 0V4Zm0 1H4v1a3 3 0 0 0 3 3m10-4h3v1a3 3 0 0 1-3 3M9 14h6m-5 0v2.5c0 .8-.7 1.5-1.5 1.5h7c-.8 0-1.5-.7-1.5-1.5V14m-5 6h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Top traders <span class="mut sm">FOMO top 50 + publieke Solana-traders · 30D</span></div>
+
+    <div class="sec-row"><h2>Live screen</h2><span class="mut sm">Bot's computer</span></div>
+    <div class="lscreen" id="lscreen">
+      <div class="ls-top"><span class="ls-live"><i></i>Live · Bot's computer</span><span class="ls-exec" id="ls-exec">Executor · idle</span></div>
+      <div class="ls-feed num" id="ls-feed"></div>
+      <div class="ls-foot" id="ls-foot"><span class="mut">Nog geen actie</span></div>
+    </div>
+
+    <div class="sec-row"><h2>Bots</h2><span class="g sm b6" id="hb-run">0 running</span></div>
+    <div class="botlist" id="l-agents"></div>
+
+    <div class="sec-row"><h2>Activity</h2><button type="button" class="see" data-go="activity">See all</button></div>
+    <div class="mut xs sub-s" id="l-actsub">0 copies tonight</div>
+    <div id="l-feed" class="feed"></div>
+    <button type="button" class="btn-grey wide" id="l-night">Night overzicht</button>
+  </main>
+
+  <!-- BOTS -->
+  <main id="s-bots" class="screen hidden">
+    <h1 class="pg-t">Bots</h1>
+    <div class="mut sm" id="b-sub">—</div>
+    <div class="botlist" id="b-agents"></div>
+    <button type="button" class="btn-grey wide" id="b-chat">Taak-chat met Grok Bot</button>
+    <div class="sec-row"><h2>Copy grid</h2><span class="mut sm" id="l-gridsub">0 traders</span></div>
+    <div class="cgrid" id="l-grid"></div>
+    <div class="sec-row"><h2>Top traders</h2><span class="mut sm">30D · tik voor details</span></div>
     <div class="hs" id="h-traders"></div>
+    <div class="sec-row"><h2>Tokens</h2><span class="mut sm">DexScreener</span></div>
     <div class="tabs3" id="h-tabs">
       <button type="button" data-t="watch">Watchlist</button>
       <button type="button" data-t="tokens" class="on">Tokens</button>
-      <button type="button" data-t="perps">Perps <span class="new">New</span></button>
+      <button type="button" data-t="perps">Perps</button>
     </div>
     <div class="chips" id="h-chips">
       <button type="button" data-c="crypto">Crypto</button>
@@ -59,37 +91,18 @@
     <div id="h-list" class="tlist"></div>
   </main>
 
-  <!-- LIVE dashboard -->
-  <main id="s-live" class="screen hidden">
-    <div class="l-head">
-      <div class="l-copy"><span class="brand-dot"></span><span class="mut">copying</span><span class="stack" id="l-stack"></span><b id="l-n">0 traders</b><span class="mut" id="l-behind"></span></div>
-      <div class="mut sm" id="l-open">0 open</div>
-    </div>
-    <div class="bal" id="l-bal">$0<span class="dec">.00</span></div>
-    <div class="sub-ch"><span id="l-ch" class="g">▲ $0.00 (+0%)</span> <span class="mut">since deposit</span> <span class="modetag" id="l-mode">SIM</span></div>
-    <div class="chart-wrap scrub-wrap"><svg id="l-chart" viewBox="0 0 390 190" preserveAspectRatio="none"></svg><div id="l-labels" class="c-labels"></div><div id="l-scrub" class="scrub hidden"><i class="sl"></i><b class="sd"></b><span class="st" id="l-scrub-t"></span></div></div>
-    <div class="tf" id="l-tf">
-      <button type="button" data-r="LIVE" class="on"><i></i>LIVE</button><button type="button" data-r="1H">1H</button><button type="button" data-r="4H">4H</button><button type="button" data-r="1D">1D</button><button type="button" data-r="1W">1W</button><button type="button" data-r="ALL">ALL</button>
-    </div>
-    <div class="sec-row"><h2>Copy grid</h2><span class="mut sm" id="l-gridsub">0 traders</span></div>
-    <div class="cgrid" id="l-grid"></div>
-    <div class="rail"><i></i><i></i><i></i><i></i></div>
-    <div class="agents" id="l-agents"></div>
-    <div class="sec-row"><h2>Activity</h2><span class="mut sm" id="l-actsub">0 copies tonight</span></div>
-    <div id="l-feed" class="feed"></div>
-    <button type="button" class="btn-grey wide" id="l-night">Night overzicht</button>
-  </main>
-
   <!-- AGENTS (task chat) -->
   <main id="s-agents" class="screen hidden chat">
-    <div class="c-head"><span class="gk" aria-hidden="true"></span><div><b>Grok Bot</b><div class="mut xs" id="c-sub">new task · copy desk · $0.00</div></div></div>
+    <button type="button" class="back" data-go="bots" aria-label="terug"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="c-head"><span class="gk" aria-hidden="true"></span><div><b>Grok Bot</b><div class="mut xs" id="c-sub">new task · Trencher · $0.00</div></div></div>
     <div class="c-body" id="c-body"></div>
     <div class="c-input"><input type="text" id="c-in" placeholder="Give Grok Bot a task..." autocomplete="off"><button type="button" id="c-send" aria-label="verstuur">↑</button></div>
   </main>
 
   <!-- ACTIVITY -->
   <main id="s-activity" class="screen hidden">
-    <div class="mut sm" id="a-sub">tonight · tonight</div>
+    <h1 class="pg-t">Activity</h1>
+    <div class="mut sm" id="a-sub">tonight</div>
     <div class="fchips" id="a-chips">
       <button type="button" data-f="all" class="on">All</button><button type="button" data-f="copies">Copies</button><button type="button" data-f="exits">Exits</button><button type="button" data-f="rules">Rules</button>
     </div>
@@ -98,19 +111,34 @@
 
   <!-- ACCOUNT -->
   <main id="s-account" class="screen hidden">
-    <div class="acc-h"><span class="av big" style="background:linear-gradient(135deg,#3b5bff,#7a3bff)">C</span><div><b>copy desk</b><div class="mut sm" id="ac-sub">ECHT GELD + demo · Grok Bot</div></div></div>
+    <button type="button" class="back" data-go="home" id="ac-back" aria-label="terug"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="acc-h"><span class="pav" aria-hidden="true">T</span><div><b class="pname">Trencher</b><div class="mut sm" id="ac-handle">—</div><div class="mut xs" id="ac-sub">ECHT GELD + demo · Grok Bot</div></div></div>
+    <div class="ac-bal num" id="ac-bal">$—</div>
+    <div class="ac-ch num"><span id="ac-ch" class="g">+$0.00</span> <span class="mut" id="ac-chl">24h</span></div>
+    <div class="ptabs" id="ac-tf"><button type="button" data-a="24h" class="on">24h</button><button type="button" data-a="7d">7d</button><button type="button" data-a="30d">30d</button><button type="button" data-a="All">All</button></div>
+    <svg id="ac-chart" class="ac-chart" viewBox="0 0 390 120" preserveAspectRatio="none"></svg>
+    <div class="cashc">
+      <span class="cash-ic" aria-hidden="true">$</span>
+      <div class="cash-m"><span class="mut sm">Cash balance</span><b class="num" id="ac-cash">$—</b></div>
+      <button type="button" class="rbtn" id="ac-dep" aria-label="storten"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button type="button" class="rbtn" id="ac-wd" aria-label="opnemen"><svg viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <div class="pos-h"><h2>Positions (<span id="ac-pn">0</span>)</h2><div class="oc" id="ac-oc"><button type="button" data-o="open" class="on">Open</button><button type="button" data-o="closed">Closed</button></div></div>
+    <div class="fpills" id="ac-pf"><button type="button" data-p="all" class="on">All</button><button type="button" data-p="tokens">Tokens</button></div>
+    <div id="ac-pos" class="plist"></div>
+
     <div class="card koppel" id="ph-card">
       <div class="k-t">Phantom-wallet</div>
       <div class="k-on" id="ph-status">Gekoppeld · ECHT GELD</div>
       <div class="kv"><span>Adres</span><b class="mono" id="ph-addr">5Zgz…utfc</b></div>
-      <div class="kv"><span>SOL</span><b id="ph-sol">—</b></div>
-      <div class="kv"><span>USDC</span><b id="ph-usdc">—</b></div>
-      <div class="kv"><span>In open posities</span><b id="ph-pos">—</b></div>
-      <div class="kv"><span>Totaal</span><b id="ph-total" style="font-size:18px">—</b></div>
-      <div class="kv"><span>Start · stopt bij</span><b id="ph-limit">—</b></div>
+      <div class="kv"><span>SOL</span><b class="num" id="ph-sol">—</b></div>
+      <div class="kv"><span>USDC</span><b class="num" id="ph-usdc">—</b></div>
+      <div class="kv"><span>In open posities</span><b class="num" id="ph-pos">—</b></div>
+      <div class="kv"><span>Totaal</span><b class="num" id="ph-total" style="font-size:18px">—</b></div>
+      <div class="kv"><span>Start · stopt bij</span><b class="num" id="ph-limit">—</b></div>
       <div class="kv"><span>Kopen</span><b id="ph-buys">—</b></div>
       <p class="mut xs" id="ph-upd" style="margin:8px 0 0"></p>
-      <p class="mut sm">Aparte Phantom-wallet (Solana), alleen voor de copy desk. Stoppen: stuur “live stop” in Telegram. FOMO is niet gekoppeld; de app vraagt nooit om je wachtwoord of herstelzin.</p>
+      <p class="mut sm">Aparte Phantom-wallet (Solana), alleen voor deze copy desk. Stoppen: stuur “live stop” in Telegram. De app vraagt nooit om je wachtwoord of herstelzin.</p>
       <a class="btn-grey wide" id="ph-scan" style="display:block;text-align:center;text-decoration:none" href="https://solscan.io/account/5ZgzJWhEVULCHsPEzGa976sjWdaDdropZodkDtZutfc" target="_blank" rel="noopener">Bekijk wallet op Solscan</a>
     </div>
     <div class="card">
@@ -140,20 +168,19 @@
 
   <!-- POSITION detail (full screen) -->
   <main id="s-pos" class="screen hidden">
-    <button type="button" class="back" id="p-back">‹</button>
-    <div class="bal mc"><span id="p-mc">$—</span> <span class="mcl">MC</span></div>
-    <div class="g sb" id="p-since">—</div>
+    <button type="button" class="back" id="p-back" aria-label="terug"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="bal mc num"><span id="p-mc">$—</span> <span class="mcl">MC</span></div>
+    <div class="g sb num" id="p-since">—</div>
     <div class="p-who" id="p-who"></div>
     <div class="chart-wrap pchart"><svg id="p-chart" viewBox="0 0 390 300" preserveAspectRatio="none"></svg><div id="p-labels" class="c-labels"></div><div id="p-banner" class="banner-x hidden"></div></div>
     <div id="p-cards"></div>
   </main>
 
   <nav class="nav" id="nav">
-    <button type="button" data-s="home" class="on"><svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-5H9v5H4z" fill="currentColor"/></svg>Home</button>
-    <button type="button" data-s="live"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Live</button>
-    <button type="button" data-s="agents"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="16.5" cy="9" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M14.5 14.3c2.6-.4 5 1 5.8 4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Agents</button>
-    <button type="button" data-s="activity"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Activity</button>
-    <button type="button" data-s="account"><span class="av nav-av" style="background:linear-gradient(135deg,#3b5bff,#7a3bff)">C</span>Account</button>
+    <button type="button" data-s="home" class="on"><svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5.2v-5.2H9.2V20H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>Home</span></button>
+    <button type="button" data-s="bots"><svg viewBox="0 0 24 24"><path d="M6.5 8.5h11a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-7.5a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 4.5v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path class="ln" d="M9 13.2v.6M15 13.2v.6M9.5 16.6h5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="4" r="1.2" fill="currentColor"/></svg><span>Bots</span></button>
+    <button type="button" data-s="activity"><svg viewBox="0 0 24 24"><path d="M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18V6A1.5 1.5 0 0 1 5 4.5Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path class="ln" d="M7 12h2.5l1.5-3.5 2.5 7 1.5-3.5H17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Activity</span></button>
+    <button type="button" data-s="account"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 20c.9-3.9 3.9-6 7.5-6s6.6 2.1 7.5 6Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>Account</span></button>
   </nav>
 
   <!-- sheets -->
@@ -172,7 +199,7 @@
     <div class="sh-h"><span class="brand-dot"></span><b>Opnemen · demo</b><button type="button" class="x" data-x>✕</button></div>
     <div class="mut sm ctr" style="margin:-4px 0 12px">Dit is een demo. Er wordt geen echt geld opgenomen.</div>
     <div class="card list0">
-      <div class="kv"><span>Van</span><b><span class="av xs" style="background:linear-gradient(135deg,#3b5bff,#7a3bff)">C</span> @copy desk</b></div>
+      <div class="kv"><span>Van</span><b><span class="av xs" style="background:linear-gradient(135deg,#00D26A,#0A84FF)">T</span> @trencher</b></div>
       <div class="kv"><span><span class="cardico"></span> Naar</span><b class="mut">demo · geen echt geld</b></div>
       <div class="kv"><span>Grok Bot posities</span><b id="wd-pos">—</b></div>
       <div class="kv"><span>Fee</span><b>$0.00</b></div>
@@ -200,7 +227,7 @@
   <section class="done hidden" id="done">
     <canvas id="confetti"></canvas>
     <div class="done-card">
-      <div class="d-top"><span class="av" style="background:linear-gradient(135deg,#3b5bff,#7a3bff)">C</span><div><b>@copy desk</b><div class="mut xs">demo · Grok Bot</div></div><span class="ok big">✓</span></div>
+      <div class="d-top"><span class="av" style="background:linear-gradient(135deg,#00D26A,#0A84FF)">T</span><div><b>@trencher</b><div class="mut xs">demo · Grok Bot</div></div><span class="ok big">✓</span></div>
       <div class="mut sm">Demo-resultaat · geen echte opname</div>
       <div class="d-amt" id="d-amt">$0.00</div>
       <div class="sm b6" id="d-line">—</div>
@@ -209,6 +236,6 @@
     </div>
   </section>
 </div>
-<script src="app.js?v=41"></script>
+<script src="app.js?v=42"></script>
 </body>
 </html>
