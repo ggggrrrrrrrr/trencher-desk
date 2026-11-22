@@ -307,7 +307,7 @@
     L += '<span class="c-lab green left" style="' + pc(6, Y(lines[0].px) + 20) + '">' + esc(lines[0].t) + "</span>";
     L += '<span class="c-lab green left" style="' + pc(6, Y(lines[1].px) + 20) + '">' + esc(lines[1].t) + "</span>";
     L += '<span class="c-lab red left" style="' + pc(W * 0.3, Y(lines[2].px) + 20) + '">' + esc(lines[2].t) + "</span>";
-    if (p.leader_entry_usd) L += '<span style="position:absolute;' + pc(Math.max(24, X(tL)), Math.min(H - VH - 40, Y(p.leader_entry_usd) + 10)) + ';transform:translate(-50%,0);text-align:center;font-size:11px;color:#fff;font-weight:600">' + av(p.leader, "xs") + "<br>" + esc(p.leader) + "</span>";
+    if (p.leader_entry_usd) L += '<span style="position:absolute;' + pc(Math.max(24, X(tL)), Math.max(4, Math.min(H - VH - 40, Y(p.leader_entry_usd) + (Math.abs(Y(p.leader_entry_usd) - Y(lines[2].px)) < 44 ? -44 : 10)))) + ';transform:translate(-50%,0);text-align:center;font-size:11px;color:#fff;font-weight:600">' + av(p.leader, "xs") + "<br>" + esc(p.leader) + "</span>";
     if (!real) L += '<span style="position:absolute;left:8px;bottom:6px;font-size:11px;color:#6e6e73">koersdata (GeckoTerminal) niet beschikbaar · lijn tussen echte punten</span>';
     setH("p-labels").v = L;
   }
