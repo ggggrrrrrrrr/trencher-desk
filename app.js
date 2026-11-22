@@ -273,13 +273,22 @@
   function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = "−" + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · same exits"; }
   /* ---------- POSITION detail ---------- */
   function findPos(id) { const o = (S.open || []).find((p) => String(p.id) === String(id)); if (o) return { p: o, open: true }; const c = (S.closed || []).find((p) => String(p.id) === String(id)); return c ? { p: c, open: false } : null; }
+  /* v37: GeckoTerminal free tier is ~30 calls/min; renderPos runs on every 5s poll, so cache candles
+     per pool+agg (30s), keep the last good set on errors/429 and back off 60s instead of flickering to a flat line. */
+  const CANDLES = {};
   async function candles(pool, fromMs, toMs) {
+    const span = (toMs - fromMs) / 60e3; const agg = span > 600 ? 15 : span > 200 ? 5 : 1;
+    const key = pool + "|" + agg, c0 = CANDLES[key], now = Date.now();
+    const cut = (l) => l ? l.filter((c) => c.t >= fromMs - 5 * 60e3 && c.t <= toMs + 5 * 60e3) : null;
+    if (c0 && (now < c0.until || c0.busy)) return cut(c0.list);
+    const ent = CANDLES[key] = { list: c0 ? c0.list : null, until: now + 30000, busy: true };
     try {
-      const span = (toMs - fromMs) / 60e3; const agg = span > 600 ? 15 : span > 200 ? 5 : 1;
       const r = await fetch("https://api.geckoterminal.com/api/v2/networks/solana/pools/" + encodeURIComponent(pool) + "/ohlcv/minute?aggregate=" + agg + "&limit=300&currency=usd", { headers: { Accept: "application/json" } });
-      if (!r.ok) return null; const j = await r.json(); const l = ((j.data || {}).attributes || {}).ohlcv_list || [];
-      return l.map((c) => ({ t: c[0] * 1000, o: +c[1], h: +c[2], l: +c[3], c: +c[4], v: +c[5] })).filter((c) => c.t >= fromMs - 5 * 60e3 && c.t <= toMs + 5 * 60e3).sort((a, b) => a.t - b.t);
-    } catch (e) { return null; }
+      if (!r.ok) throw new Error("http " + r.status); const j = await r.json(); const l = ((j.data || {}).attributes || {}).ohlcv_list || [];
+      ent.list = l.map((c) => ({ t: c[0] * 1000, o: +c[1], h: +c[2], l: +c[3], c: +c[4], v: +c[5] })).sort((a, b) => a.t - b.t);
+    } catch (e) { ent.until = Date.now() + 60000; }
+    finally { ent.busy = false; }
+    return cut(ent.list);
   }
   async function renderPos() {
     const f = findPos(openPosId); if (!f) { setScreen("live"); return; }
@@ -377,10 +386,10 @@
     const l = leaders().find((x) => x.handle === handle); if (!l) return; const r = S.rules;
     const mine = (S.open || []).filter((p) => p.leader === handle).concat((S.closed || []).filter((p) => p.leader === handle));
     const rows = mine.length ? mine.map((p) => { const isOpen = (S.open || []).some((o) => o.id === p.id); const g = isOpen ? p.value - p.size_usd * p.remaining : p.pnl; return '<div class="fr" data-pos="' + p.id + '"><div class="ic">' + tokIcon(p.mint, p.symbol) + '</div><div class="m"><b>' + esc(p.symbol || short(p.mint)) + "</b><span>" + money(p.size_usd) + " in · " + (isOpen ? "open · live" : esc(exitName(p.reason))) + '</span></div><div class="v"><b class="' + cls(g) + '">' + sMoney(g) + "</b><span>" + pct(p.pct) + "</span></div></div>"; }).join("") : "";
-    setH("tr-body").v = '<div class="sh-h left">' + av(handle, "big") + '<div><b style="font-size:20px">' + esc(handle) + '</b><div class="mut xs">' + rankLbl(l) + " · " + pnl30(l) + " 30D PnL" + (isPub(l) ? " · publieke Solana-trader (bron kolscan.io)" : "") + "</div></div>" + (l.tracked ? '<span class="cchip" style="margin-left:auto;color:#34d659">● copying</span>' : '<span class="cchip" style="margin-left:auto;color:#8e8e93">geen wallet</span>') + "</div>" +
+    setH("tr-body").v = '<div class="sh-h left">' + av(handle, "big") + '<div><b style="font-size:20px">' + esc(handle) + '</b><div class="mut xs">' + rankLbl(l) + " · " + pnl30(l) + " 30D PnL" + (isPub(l) ? " · publieke Solana-trader (bron kolscan.io)" : "") + "</div></div>" + (l.tracked ? '<span class="cchip" style="margin-left:auto;color:#34d659">● copying</span>' : '<span class="cchip" style="margin-left:auto;color:#8e8e93">geen wallet</span>') + '<button type="button" class="x" data-x2 style="position:static;margin-left:10px;flex:none" aria-label="sluiten">✕</button></div>' +
       '<div class="mut xs b6" style="letter-spacing:.6px;margin:8px 0 6px">GROK BOT COPIED FROM ' + esc(handle.toUpperCase()) + '</div><div class="card" style="margin-top:0;padding:6px 14px">' + rows + '<div class="mut sm" style="padding:12px 0">' + (l.tracked ? "watching " + esc(handle) + " for the next buy…" + (l.verified ? "" : " (wallet niet geverifieerd)") : esc(l.why_not || "")) + "</div></div>" +
       (l.profile_url ? '<a class="btn-grey wide" style="margin-top:12px;display:block;text-align:center;text-decoration:none" href="' + esc(l.profile_url) + '" target="_blank" rel="noopener">Bekijk ' + esc(handle) + ' op kolscan.io</a>' : "") + '<div class="mut xs b6" style="letter-spacing:.6px;margin:16px 0 6px">COPY RULES</div><div class="g2" style="margin-top:0"><div class="cell"><span>Delay</span><b>' + (dly() ? dly() + 's after each buy' : 'direct, same moment') + '</b></div><div class="cell"><span>Exits</span><b>same as ' + esc(handle) + '</b></div><div class="cell"><span>Take profit</span><b>50% +' + r.tp1_pct + "% · rest +" + r.tp2_pct + '%</b></div><div class="cell"><span>Stop</span><b>−' + r.stop_pct + "% · " + r.ticket_pct + "% per copy</b></div></div>";
-    openSheet("sh-trader");
+    openSheet("sh-trader"); const x = document.querySelector("#tr-body [data-x2]"); if (x) x.addEventListener("click", closeSheets);
   }
   function confetti() {
     const c = $("confetti"), x = c.getContext("2d"); c.width = innerWidth; c.height = innerHeight;
@@ -482,7 +491,7 @@
   function wake() { if (document.hidden) { clearTimeout(pollT); return; } refresh().then(schedule); refreshTokens(); }
   captureFromHash(); wire(); wirePush(); wireScrub();
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register(new URL("sw.js?v=36", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
+    navigator.serviceWorker.register(new URL("sw.js?v=37", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
     let rl = false; const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener("controllerchange", () => { if (rl || !had) return; rl = true; location.reload(); });
   }
   loadCached(); refresh().then(schedule);
