@@ -285,7 +285,17 @@
 
   /* ---------- ACTIVITY / ACCOUNT ---------- */
   function renderActivity() { $("a-sub").textContent = "tonight · copying " + S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + " · " + behind(); setH("a-feed").v = feedHtml(S.activity, feedF); }
-  function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = isLive() ? "max " + r.ticket_pct + "% van saldo · max " + r.max_open + " open · min $" + (r.min_trade_usd || 2) + " · " + (r.sol_reserve || 0.02) + " SOL reserve" : r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = (isLive() ? "noodstop −" : "−") + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · verkoopt als trader verkoopt" + (isLive() && RAW.live_book ? " · stopt alles bij −$" + Number(RAW.live_book.loss_limit || 12.5).toFixed(2) : ""); renderPhantom(); }
+  function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = isLive() ? "max " + r.ticket_pct + "% van saldo · max " + r.max_open + " open · min $" + (r.min_trade_usd || 2) + " · " + (r.sol_reserve || 0.02) + " SOL reserve" : r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = (isLive() ? "noodstop −" : "−") + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · verkoopt als trader verkoopt" + (isLive() && RAW.live_book ? " · stopt alles bij −$" + Number(RAW.live_book.loss_limit || 12.5).toFixed(2) : ""); renderPhantom(); renderDemo(); }
+  function renderDemo() {
+    const st = $("demo-state"), btn = $("demo-btn"), hint = $("demo-hint"); if (!st || !btn) return;
+    const on = !!(RAW && RAW.demo_enabled);
+    st.textContent = on ? "AAN · kopieert met nepgeld, geen meldingen" : "UIT · alleen geschiedenis";
+    st.className = on ? "k-on" : "";
+    const bot = (RAW && RAW.bot) || botName();
+    btn.textContent = on ? "Demo uitzetten" : "Demo aanzetten";
+    if (bot) { btn.href = "https://t.me/" + bot + "?start=" + (on ? "demo_off" : "demo_on"); btn.classList.remove("hidden"); hint.textContent = "Na Start in Telegram ververst de status hier binnen ~1 minuut."; }
+    else { btn.removeAttribute("href"); hint.textContent = "Stuur in Telegram: demo " + (on ? "uit" : "aan"); }
+  }
   function renderPhantom() {
     const L = RAW && RAW.live_book; const st = $("ph-status"); if (!st) return;
     if (!L) { st.textContent = "Nog geen gegevens"; st.className = "k-on warn"; return; }
