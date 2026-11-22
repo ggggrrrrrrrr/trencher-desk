@@ -8,19 +8,22 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="copy desk">
   <meta name="theme-color" content="#000000">
-  <title>copy desk · demo</title>
-  <link rel="manifest" href="manifest.json?v=38">
+  <title>copy desk</title>
+  <link rel="manifest" href="manifest.json?v=39">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <link rel="preload" href="app.js?v=38" as="script">
-  <link rel="stylesheet" href="app.css?v=38">
+  <link rel="preload" href="app.js?v=39" as="script">
+  <link rel="stylesheet" href="app.css?v=39">
 </head>
 <body>
 <div id="app">
   <div id="error" class="banner hidden" role="status"></div>
+  <div class="booksw" id="booksw" role="tablist" aria-label="Boek">
+    <button type="button" data-b="live" class="on"><i class="dot-live"></i>ECHT GELD</button><button type="button" data-b="sim">SIM · demo</button>
+  </div>
   <section id="login-panel" class="login hidden">
     <div class="login-t">Plak de inloglink uit Telegram</div>
     <div class="row-in"><input id="login-link" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…#d=…"><button type="button" class="btn-blue sm" id="login-save">Opslaan</button></div>
@@ -31,7 +34,8 @@
     <section class="h-top">
       <div>
         <div class="bal" id="h-bal">$0<span class="dec">.00</span></div>
-        <div class="sub-ch"><span id="h-ch" class="g">+$0.00</span> <span class="mut">24h</span></div>
+        <div class="sub-ch"><span id="h-ch" class="g">+$0.00</span> <span class="mut">24h</span> <span class="modetag" id="h-mode">ECHT GELD</span></div>
+        <div class="mut xs" id="h-wal"></div>
       </div>
       <button type="button" class="pill-blue" id="h-dep-pill">Storten</button>
     </section>
@@ -62,7 +66,7 @@
       <div class="mut sm" id="l-open">0 open</div>
     </div>
     <div class="bal" id="l-bal">$0<span class="dec">.00</span></div>
-    <div class="sub-ch"><span id="l-ch" class="g">▲ $0.00 (+0%)</span> <span class="mut">since deposit</span> <span class="sim">SIM</span></div>
+    <div class="sub-ch"><span id="l-ch" class="g">▲ $0.00 (+0%)</span> <span class="mut">since deposit</span> <span class="modetag" id="l-mode">SIM</span></div>
     <div class="chart-wrap scrub-wrap"><svg id="l-chart" viewBox="0 0 390 190" preserveAspectRatio="none"></svg><div id="l-labels" class="c-labels"></div><div id="l-scrub" class="scrub hidden"><i class="sl"></i><b class="sd"></b><span class="st" id="l-scrub-t"></span></div></div>
     <div class="tf" id="l-tf">
       <button type="button" data-r="LIVE" class="on"><i></i>LIVE</button><button type="button" data-r="1H">1H</button><button type="button" data-r="4H">4H</button><button type="button" data-r="1D">1D</button><button type="button" data-r="1W">1W</button><button type="button" data-r="ALL">ALL</button>
@@ -95,11 +99,19 @@
   <!-- ACCOUNT -->
   <main id="s-account" class="screen hidden">
     <div class="acc-h"><span class="av big" style="background:linear-gradient(135deg,#3b5bff,#7a3bff)">C</span><div><b>copy desk</b><div class="mut sm">demo · Grok Bot</div></div></div>
-    <div class="card koppel">
-      <div class="k-t">Koppel FOMO</div>
-      <div class="k-off">Echt geld: nog niet actief</div>
-      <p class="mut sm">Deze app handelt alleen in demo. Geen koppeling met je FOMO-account, geen login, geen orderpad. De app vraagt nooit om je wachtwoord, sleutels of seed. Echt geld komt pas als jij daarvoor kiest, met eerst één testorder van $1.</p>
-      <button type="button" class="btn-grey wide" id="k-btn">Koppelen · nog niet actief</button>
+    <div class="card koppel" id="ph-card">
+      <div class="k-t">Phantom-wallet</div>
+      <div class="k-on" id="ph-status">Gekoppeld · ECHT GELD</div>
+      <div class="kv"><span>Adres</span><b class="mono" id="ph-addr">5Zgz…utfc</b></div>
+      <div class="kv"><span>SOL</span><b id="ph-sol">—</b></div>
+      <div class="kv"><span>USDC</span><b id="ph-usdc">—</b></div>
+      <div class="kv"><span>In open posities</span><b id="ph-pos">—</b></div>
+      <div class="kv"><span>Totaal</span><b id="ph-total" style="font-size:18px">—</b></div>
+      <div class="kv"><span>Start · stopt bij</span><b id="ph-limit">—</b></div>
+      <div class="kv"><span>Kopen</span><b id="ph-buys">—</b></div>
+      <p class="mut xs" id="ph-upd" style="margin:8px 0 0"></p>
+      <p class="mut sm">Aparte Phantom-wallet (Solana), alleen voor de copy desk. Stoppen: stuur “live stop” in Telegram. FOMO is niet gekoppeld; de app vraagt nooit om je wachtwoord of herstelzin.</p>
+      <a class="btn-grey wide" id="ph-scan" style="display:block;text-align:center;text-decoration:none" href="https://solscan.io/account/5ZgzJWhEVULCHsPEzGa976sjWdaDdropZodkDtZutfc" target="_blank" rel="noopener">Bekijk wallet op Solscan</a>
     </div>
     <div class="card">
       <div class="k-t sm2">Regels</div>
@@ -107,6 +119,7 @@
       <div class="kv"><span>Per kopie</span><b id="ac-size">—</b></div>
       <div class="kv"><span>Exits</span><b id="ac-rules">—</b></div>
       <div class="kv"><span>Nieuwe demo</span><b>Telegram: demo reset</b></div>
+      <div class="kv"><span>Echt geld stoppen</span><b>Telegram: live stop</b></div>
     </div>
     <div class="card">
       <div class="k-t sm2">Meldingen bij winst</div>
@@ -190,6 +203,6 @@
     </div>
   </section>
 </div>
-<script src="app.js?v=38"></script>
+<script src="app.js?v=39"></script>
 </body>
 </html>
