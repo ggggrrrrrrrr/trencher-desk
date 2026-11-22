@@ -523,7 +523,7 @@
   function wake() { if (document.hidden) { clearTimeout(pollT); return; } refresh().then(schedule); refreshTokens(); }
   captureFromHash(); wire(); wirePush(); wireScrub();
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register(new URL("sw.js?v=39", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
+    navigator.serviceWorker.register(new URL("sw.js?v=40", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
     let rl = false; const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener("controllerchange", () => { if (rl || !had) return; rl = true; location.reload(); });
   }
   loadCached(); refresh().then(schedule);
