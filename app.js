@@ -157,8 +157,8 @@
       sub = (tp ? esc(r.replace(/\s*\(.*\)/, "")) + " rule" : stop ? "stop rule · −" + ((S && S.rules && S.rules.stop_pct) || 15) + "%" : esc(a.leader) + " sold · same exit") + " · " + hhmm(a.ts);
       right = '<b class="' + cls(a.gain) + '">' + sMoney(a.gain) + "</b><span>" + pct(a.pct) + "</span>";
     } else {
-      title = esc(a.text); sub = "rule · " + hhmm(a.ts); right = "";
-      return '<div class="fr"><div class="ic"><span class="ti" style="background:#1c1c1f;color:#ff9f0a">R</span></div><div class="m"><b style="white-space:normal">' + title + "</b><span>" + sub + '</span></div><div class="v">' + right + "</div></div>";
+      title = esc(a.text); sub = "rule · " + (a.leader ? esc(a.leader) + " · " : "") + (a.symbol ? esc(a.symbol) + " · " : "") + hhmm(a.ts); right = "";
+      return '<div class="fr"' + (a.mint ? ' data-mint="' + esc(a.mint) + '"' : "") + '><div class="ic"><span class="ti" style="background:#1c1c1f;color:#ff9f0a">R</span></div><div class="m"><b style="white-space:normal">' + title + "</b><span>" + sub + '</span></div><div class="v">' + right + "</div></div>";
     }
     return '<div class="fr" data-pos="' + esc(a.pos || "") + '"><div class="ic">' + tokIcon(a.mint, sym) + av(a.leader) + '</div><div class="m"><b>' + title + "</b><span>" + sub + '</span></div><div class="v">' + right + "</div></div>";
   }
