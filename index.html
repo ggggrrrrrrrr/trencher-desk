@@ -9,14 +9,14 @@
   <meta name="apple-mobile-web-app-title" content="Trencher">
   <meta name="theme-color" content="#000000">
   <title>Trencher</title>
-  <link rel="manifest" href="manifest.json?v=43">
+  <link rel="manifest" href="manifest.json?v=44">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <link rel="preload" href="app.js?v=43" as="script">
-  <link rel="stylesheet" href="app.css?v=43">
+  <link rel="preload" href="app.js?v=44" as="script">
+  <link rel="stylesheet" href="app.css?v=44">
 </head>
 <body>
 <div id="app">
@@ -154,9 +154,6 @@
       <p class="mut sm">Los van ECHT GELD: de knop zet alleen het nepgeld-boek aan of uit, nooit de echte trades. Demo stuurt geen meldingen. De knop opent de desk-bot in Telegram; tik daar op Start.</p>
       <a class="btn-grey wide" id="demo-btn" style="display:block;text-align:center;text-decoration:none" href="#" target="_blank" rel="noopener">Demo aanzetten</a>
       <p class="mut xs" id="demo-hint" style="margin:8px 0 0"></p>
-      <div class="kv"><span>Demo-saldo</span><b id="demo-bal">—</b></div>
-      <div class="row-in"><input id="demo-amt" type="number" inputmode="decimal" min="10" max="100000" step="any" placeholder="nieuw saldo, bijv. 250"><a class="btn-blue sm" id="demo-amt-go" href="#" target="_blank" rel="noopener">Zet saldo</a></div>
-      <p class="mut xs" id="demo-amt-hint" style="margin:8px 0 0">Start een nieuw demo-boek met dit saldo ($10 – $100.000). Het oude blijft in de geschiedenis. ECHT GELD verandert niet.</p>
     </div>
     <div class="card">
       <div class="k-t sm2">Meldingen bij winst</div>
@@ -192,22 +189,25 @@
     <div class="grab"></div>
     <div class="sh-h"><span class="brand-dot"></span><b>Storten · demo</b><button type="button" class="x" data-x>✕</button></div>
     <div class="amt" id="dep-amt">$100.00<span class="caret"></span></div>
-    <div class="mut sm ctr"><span class="cardico"></span> Demo-geld · geen echt geld · instant</div>
+    <div class="mut sm ctr"><span class="cardico"></span> Demo-geld · geen echt geld · ECHT GELD verandert niet</div>
     <div class="pad" id="dep-pad"><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button>.</button><button>0</button><button>⌫</button></div>
-    <div class="mut xs ctr" id="dep-note">De demo start altijd met $100.</div>
-    <button type="button" class="btn-blue big" id="dep-go">Start demo $100.00</button>
+    <div class="mut xs ctr" id="dep-note">Typ een bedrag. Bevestigen gaat via de desk-bot in Telegram (tik daar op Start).</div>
+    <button type="button" class="btn-blue big" id="dep-go">Stort op demo</button>
   </section>
   <section class="sheet hidden" id="sh-wd">
     <div class="grab"></div>
     <div class="sh-h"><span class="brand-dot"></span><b>Opnemen · demo</b><button type="button" class="x" data-x>✕</button></div>
     <div class="mut sm ctr" style="margin:-4px 0 12px">Dit is een demo. Er wordt geen echt geld opgenomen.</div>
+    <div class="amt" id="wd-amt">$0<span class="caret"></span></div>
+    <div class="pad" id="wd-pad"><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button>.</button><button>0</button><button>⌫</button></div>
+    <div class="mut xs ctr" id="wd-note">Max = vrij demo-saldo (geld in open posities blijft staan). Nooit onder $0.</div>
     <div class="card list0">
       <div class="kv"><span>Van</span><b><span class="av xs" style="background:linear-gradient(135deg,#00D26A,#0A84FF)">T</span> @trencher</b></div>
       <div class="kv"><span><span class="cardico"></span> Naar</span><b class="mut">demo · geen echt geld</b></div>
       <div class="kv"><span>Grok Bot posities</span><b id="wd-pos">—</b></div>
       <div class="kv"><span>Fee</span><b>$0.00</b></div>
     </div>
-    <button type="button" class="btn-blue big" id="wd-go">Bekijk demo-resultaat</button>
+    <button type="button" class="btn-blue big" id="wd-go">Neem op van demo</button>
   </section>
   <section class="sheet hidden" id="sh-night">
     <div class="grab"></div>
@@ -239,6 +239,6 @@
     </div>
   </section>
 </div>
-<script src="app.js?v=43"></script>
+<script src="app.js?v=44"></script>
 </body>
 </html>

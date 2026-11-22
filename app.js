@@ -11,7 +11,14 @@
   const BOOK_KEY = "cd_book"; let RAW = null;
   function book() { let b = ""; try { b = localStorage.getItem(BOOK_KEY) || ""; } catch (e) {} return b === "sim" ? "sim" : "live"; }
   function isLive() { return book() === "live" && !!(RAW && RAW.live_book); }
-  function viewOf(j) { if (!j) return j; if (book() !== "live" || !j.live_book) return j; const L = j.live_book; return Object.assign({}, j, L, { sim: false, live: true, tracked: j.tracked, top_n: j.top_n, public_n: j.public_n, leaders: j.leaders, watch: j.watch, last_watch: j.last_watch, tokens: j.tokens, agents: j.agents, delay_s: j.delay_s, pending: j.pending }); }
+  const MOVE_KEY = "desk_demo_move";
+  function pendMove() { try { const p = JSON.parse(localStorage.getItem(MOVE_KEY) || "null"); if (!p) return null; if (Date.now() - p.t > 6 * 60e3) { localStorage.removeItem(MOVE_KEY); return null; } return p; } catch (e) { return null; } }
+  function withMove(j) {  // demo Storten/Opnemen sent via Telegram: show it at once until the desk snapshot has it
+    const p = pendMove(); if (!p || !j || !j.book) return j;
+    if (Math.abs(Number(j.book.start_usd) - p.base) > 0.005) { try { localStorage.removeItem(MOVE_KEY); } catch (e) {} return j; }
+    return Object.assign({}, j, { balance: Number(j.balance) + p.d, cash: Math.max(0, Number(j.cash) + p.d), book: Object.assign({}, j.book, { start_usd: p.base + p.d }), move_pending: p.d });
+  }
+  function viewOf(j) { if (!j) return j; if (book() !== "live" || !j.live_book) return withMove(j); const L = j.live_book; return Object.assign({}, j, L, { sim: false, live: true, tracked: j.tracked, top_n: j.top_n, public_n: j.public_n, leaders: j.leaders, watch: j.watch, last_watch: j.last_watch, tokens: j.tokens, agents: j.agents, delay_s: j.delay_s, pending: j.pending }); }
   function setBook(b) { try { localStorage.setItem(BOOK_KEY, b); } catch (e) {} if (RAW) { S = viewOf(RAW); } renderBookUI(); renderAll(); }
   const SOLSCAN = "https://solscan.io/tx/";
   function txLink(sig, lab) { return sig ? '<a class="tx" href="' + SOLSCAN + encodeURIComponent(sig) + '" target="_blank" rel="noopener">' + esc(lab || "tx ↗") + "</a>" : ""; }
@@ -394,23 +401,6 @@
     btn.textContent = on ? "Demo uitzetten" : "Demo aanzetten";
     if (bot) { btn.href = "https://t.me/" + bot + "?start=" + (on ? "demo_off" : "demo_on"); btn.classList.remove("hidden"); hint.textContent = "Na Start in Telegram ververst de status hier binnen ~1 minuut."; }
     else { btn.removeAttribute("href"); hint.textContent = "Stuur in Telegram: demo " + (on ? "uit" : "aan"); }
-    renderDemoSaldo(bot);
-  }
-  function renderDemoSaldo(bot) {
-    const b = $("demo-bal"), inp = $("demo-amt"), go = $("demo-amt-go"), h = $("demo-amt-hint"); if (!b || !inp || !go) return;
-    const start = RAW && RAW.book ? RAW.book.start_usd : null;
-    b.textContent = RAW && RAW.balance != null ? money(RAW.balance) + (start != null ? " (start " + money(start, 0) + ")" : "") : "—";
-    const upd = () => {
-      const v = Number(String(inp.value || "").replace(",", "."));
-      const ok = isFinite(v) && v >= 10 && v <= 100000;
-      const amt = ok ? String(Math.round(v * 100) / 100).replace(".", "_") : "";
-      go.classList.toggle("dis", !ok);
-      if (ok && bot) go.href = "https://t.me/" + bot + "?start=demo_saldo_" + amt; else go.removeAttribute("href");
-      if (h) h.textContent = ok ? (bot ? "Opent de desk-bot in Telegram; tik daar op Start." : "Stuur in Telegram: demo saldo " + v)
-                               : "Kies een bedrag tussen $10 en $100.000. Het oude demo-boek blijft in de geschiedenis; ECHT GELD verandert niet.";
-    };
-    if (!inp.dataset.w) { inp.dataset.w = "1"; inp.addEventListener("input", upd); go.addEventListener("click", (e) => { if (!go.getAttribute("href")) e.preventDefault(); }); }
-    upd();
   }
   function renderPhantom() {
     const L = RAW && RAW.live_book; const st = $("ph-status"); if (!st) return;
@@ -520,13 +510,21 @@
   function openSheet(id) { $("ov").classList.remove("hidden"); document.querySelectorAll(".sheet").forEach((s) => s.classList.add("hidden")); $(id).classList.remove("hidden"); }
   function closeSheets() { $("ov").classList.add("hidden"); document.querySelectorAll(".sheet").forEach((s) => s.classList.add("hidden")); }
   function toast(t, s) { $("toast-t").textContent = t; $("toast-s").textContent = s || ""; const el = $("toast"); el.classList.remove("hidden"); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.add("hidden"), 3500); }
-  function openDeposit() {
-    const start = (S && S.book && S.book.start_usd) || 100, go = $("dep-go");
-    setH("dep-amt").v = esc(money(start)) + '<span class="caret"></span>';
-    go.className = "btn-blue big" + (isStarted() ? " okd" : ""); go.disabled = false; go.textContent = isStarted() ? "✓ Demo loopt al" : "Start demo " + money(start);
-    $("dep-note").textContent = "De demo start altijd met " + money(start) + ". Geen echt geld.";
-    openSheet("sh-dep");
+  const PADV = { dep: "", wd: "" };
+  function padShow(k) { const v = PADV[k]; setH(k + "-amt").v = esc(v ? "$" + v : "$0") + '<span class="caret"></span>'; const n = Number(v);
+    const go = $(k + "-go"); go.disabled = !(n > 0); go.textContent = (k === "dep" ? "Stort " : "Neem ") + (n > 0 ? money(n) + " " : "") + (k === "dep" ? "op demo" : "op van demo"); }
+  function padKey(k, t) { let v = PADV[k]; if (t === "⌫") v = v.slice(0, -1); else if (t === ".") { if (!v.includes(".")) v = (v || "0") + "."; } else if (/^\d$/.test(t)) { if (/\.\d\d$/.test(v) || v.replace(".", "").length >= 8) return; v = v === "0" ? t : v + t; } PADV[k] = v; padShow(k); }
+  function sendMove(k) {
+    let n = Math.round(Number(PADV[k]) * 100) / 100; if (!(n > 0) || !S || isLive()) return;
+    if (k === "wd") n = Math.min(n, Math.max(0, Math.floor(Number(S.cash || 0) * 100) / 100)); if (!(n > 0)) { toast("Niets vrij om op te nemen", "Geld in open posities blijft staan."); return; }
+    const d = k === "dep" ? n : -n, bot = (RAW && RAW.bot) || botName(), cmd = (k === "dep" ? "demo_dep_" : "demo_wd_") + String(n).replace(".", "_");
+    try { localStorage.setItem(MOVE_KEY, JSON.stringify({ d: d, base: Number(RAW.book.start_usd), t: Date.now() })); if (k === "dep") localStorage.setItem(START_KEY, "1"); } catch (e) {}
+    if (bot) window.open("https://t.me/" + bot + "?start=" + cmd, "_blank", "noopener");
+    closeSheets(); S = viewOf(RAW); renderAll();
+    toast((k === "dep" ? "Gestort: +" : "Opgenomen: -") + money(n) + " (demo)", bot ? "Tik in Telegram op Start om te bevestigen · ECHT GELD verandert niet" : "Stuur in Telegram: demo " + (k === "dep" ? "storten " : "opnemen ") + n);
   }
+  function openDeposit() { PADV.dep = ""; padShow("dep"); openSheet("sh-dep"); }
+  function openWithdraw() { PADV.wd = ""; padShow("wd"); const n = (S.open || []).length; $("wd-pos").textContent = n ? n + " open" : "all closed ✓"; $("wd-note").textContent = "Vrij: " + money(S.cash) + " · geld in open posities blijft staan · nooit onder $0."; openSheet("sh-wd"); }
   function openNight() {
     const sum = (S.summary || {}).all || {}, start = S.book.start_usd;
     const h = +new Date().toLocaleString("en-US", { timeZone: TZ, hour: "numeric", hour12: false });
@@ -587,7 +585,7 @@
     seg($("ac-oc"), "data-o", (o) => { acOC = o; if (S) renderProfile(); });
     seg($("ac-pf"), "data-p", (f) => { acPF = f; if (S) renderProfile(); });
     $("ac-dep").addEventListener("click", () => { if (!S) return; if (!isLive()) { openDeposit(); return; } const L = RAW && RAW.live_book, a = L && L.wallet && L.wallet.address; if (!a) { toast("Geen wallet-adres", "Nog geen gegevens van de Phantom-wallet."); return; } const done = () => toast("Wallet-adres gekopieerd", short(a) + " · stuur SOL hierheen vanuit Phantom (Solana-netwerk)"); try { navigator.clipboard.writeText(a).then(done, () => toast("Wallet-adres", a)); } catch (e) { toast("Wallet-adres", a); } });
-    $("ac-wd").addEventListener("click", () => { if (!S) return; if (!isLive()) { const n = (S.open || []).length; $("wd-pos").textContent = n ? n + " open" : "all closed ✓"; openSheet("sh-wd"); return; } toast("Opnemen doe je in Phantom", "Open de Phantom-app op deze wallet. Verkoop geen coins die de bot nog open heeft."); });
+    $("ac-wd").addEventListener("click", () => { if (!S) return; if (!isLive()) { openWithdraw(); return; } toast("Opnemen doe je in Phantom", "Open de Phantom-app op deze wallet. Verkoop geen coins die de bot nog open heeft."); });
     seg($("l-tf"), "data-r", (r) => { range = r; renderLiveChart(); });
     seg($("a-chips"), "data-f", (f) => { feedF = f; renderActivity(); });
     seg($("h-tabs"), "data-t", (t) => { homeTab = t; renderTokenList(); refreshTokens(); });
@@ -595,11 +593,12 @@
     document.addEventListener("click", (ev) => { const t = ev.target.closest("[data-tr]"); if (t && !ev.target.closest("[data-pos]")) { openTrader(t.getAttribute("data-tr")); return; } const p = ev.target.closest("[data-pos]"); if (p && p.getAttribute("data-pos") && !ev.target.closest("a")) openPos(p.getAttribute("data-pos")); });
     $("ov").addEventListener("click", closeSheets); document.querySelectorAll("[data-x]").forEach((b) => b.addEventListener("click", closeSheets));
     $("h-dep-pill").addEventListener("click", openDeposit); $("h-dep").addEventListener("click", openDeposit);
-    $("h-wd").addEventListener("click", () => { const n = (S.open || []).length; $("wd-pos").textContent = n ? n + " open" : "all closed ✓"; openSheet("sh-wd"); });
-    $("wd-go").addEventListener("click", showDone); $("d-close").addEventListener("click", () => $("done").classList.add("hidden"));
+    $("h-wd").addEventListener("click", () => { if (S) openWithdraw(); });
+    $("wd-go").addEventListener("click", () => sendMove("wd"));
+    $("wd-pad").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) padKey("wd", b.textContent); }); $("d-close").addEventListener("click", () => $("done").classList.add("hidden"));
     $("l-night").addEventListener("click", openNight);
-    $("dep-pad").addEventListener("click", (ev) => { if (!ev.target.closest("button")) return; const a = $("dep-amt"); a.classList.add("shake"); setTimeout(() => a.classList.remove("shake"), 120); $("dep-note").textContent = "Demo-bedrag staat vast op " + money((S && S.book.start_usd) || 100) + " (geen echt geld)."; });
-    $("dep-go").addEventListener("click", () => { if (isStarted()) { closeSheets(); toast("Demo loopt al", money(S ? S.balance : 0) + " demo-saldo · nieuwe demo met $100: stuur “demo reset” in Telegram"); return; } try { localStorage.setItem(START_KEY, "1"); } catch (e) {} const g = $("dep-go"); g.className = "btn-blue big okd"; g.textContent = "✓ Gestart"; setTimeout(() => { closeSheets(); renderAll(); toast("Demo gestart", money((S && S.book.start_usd) || 100) + " demo-saldo · geen echt geld"); }, 900); });
+    $("dep-pad").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) padKey("dep", b.textContent); });
+    $("dep-go").addEventListener("click", () => sendMove("dep"));
     seg($("booksw"), "data-b", (b) => setBook(b));
     document.addEventListener("click", (ev) => { const a = ev.target.closest("[data-ag]"); if (a) { agentInfo(a.getAttribute("data-ag")); return; } const t = ev.target.closest("[data-mint]"); if (t && !ev.target.closest("a")) openToken(t.getAttribute("data-mint")); });
     $("c-send").addEventListener("click", sendChat); $("c-in").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
