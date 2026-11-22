@@ -106,13 +106,17 @@
 
   /* ---------- HOME ---------- */
   function leaders() { return (S && S.leaders) || []; }
+  function isPub(l) { return l && l.group === "public"; }
+  function pnl30(l) { return isPub(l) ? "◎" + Math.round(l.pnl_30d_sol || 0) + " SOL" : kfmt(l.pnl_30d_usd); }
+  function rankLbl(l) { return isPub(l) ? "publiek #" + l.pub_rank : "#" + l.rank; }
+  function fomoTracked() { return leaders().filter((l) => !isPub(l) && l.tracked).length; }
   function renderHome() {
     $("h-bal").innerHTML = big(S.balance);
     const ch = $("h-ch"); ch.className = cls(S.change24h) || "g"; ch.textContent = sMoney(S.change24h);
     const started = isStarted();
     $("h-dep-pill").classList.toggle("hidden", started); $("h-btns").classList.toggle("hidden", !started);
     const st = S.leader_stats || {};
-    $("h-traders").innerHTML = leaders().map((l) => '<button type="button" class="tc' + (l.tracked ? "" : " off") + '" data-tr="' + esc(l.handle) + '"><div class="n">' + av(l.handle) + esc(l.handle) + '</div><div class="st"><b>' + kfmt(l.pnl_30d_usd) + "</b> 30D · <b>" + ((st[l.handle] || {}).copies || 0) + "</b> " + (l.tracked ? "trades" : "· geen wallet") + "</div></button>").join("");
+    $("h-traders").innerHTML = leaders().filter((l) => l.tracked).concat(leaders().filter((l) => !l.tracked)).map((l) => '<button type="button" class="tc' + (l.tracked ? "" : " off") + '" data-tr="' + esc(l.handle) + '"><div class="n">' + av(l.handle) + esc(l.handle) + '</div><div class="st"><b>' + pnl30(l) + "</b> 30D" + (isPub(l) ? " · publiek" : "") + " · <b>" + ((st[l.handle] || {}).copies || 0) + "</b> " + (l.tracked ? "trades" : "· geen wallet") + "</div></button>").join("");
     renderTokenList();
   }
   function tokenMints() {
@@ -195,7 +199,7 @@
       const w = lw[l.handle]; let a = l.tracked ? "watching for the first buy…" : "geen wallet · wacht op FOMO-koppeling";
       if (w) { const t = TOK[w.mint]; a = (w.value === "buy" ? '<span class="bt">bought</span> ' : '<span class="sd">sold</span> ') + esc((t && t.sym) || short(w.mint)) + (t && t.mc ? " · " + kfmt(t.mc) : "") + " · " + ago(w.ts); }
       const mine = (S.open || []).find((p) => p.leader === l.handle) || (S.closed || []).find((p) => p.leader === l.handle);
-      let res = '<div class="res"><span class="mut" style="font-weight:600">' + (l.tracked ? "nog geen kopie" : "#" + l.rank + " · " + kfmt(l.pnl_30d_usd) + " 30D") + "</span></div>";
+      let res = '<div class="res"><span class="mut" style="font-weight:600">' + (l.tracked ? "nog geen kopie" : rankLbl(l) + " · " + pnl30(l) + " 30D") + "</span></div>";
       if (mine) { const isOpen = (S.open || []).some((p) => p.id === mine.id); const v = isOpen ? mine.pct : mine.pct; res = '<div class="res ' + (v > 0 ? "win" : v < 0 ? "loss" : "") + '" data-pos="' + mine.id + '">' + tokIcon(mine.mint, mine.symbol) + '<span class="' + cls(v) + '">' + pct(v) + '</span><span class="v">' + (isOpen ? money(mine.value) : esc(mine.reason || "")) + "</span></div>"; }
       return '<div class="cg' + (w && Date.now() - Date.parse(w.ts) < 120e3 ? " act" : "") + '" data-tr="' + esc(l.handle) + '" style="' + (l.tracked ? "" : "opacity:.5") + '"><div><div class="t">' + av(l.handle) + "<b>" + esc(l.handle) + '</b><span class="s30">' + S.delay_s + 's</span></div><div class="a">' + a + "</div></div>" + res + "</div>";
     }).join("");
@@ -212,8 +216,8 @@
     const r = S.rules, tr = leaders().filter((l) => l.tracked), top = leaders().slice(0, 4).map((l) => "<b>@" + esc(l.handle) + "</b>").join(", ");
     $("c-sub").textContent = "new task · copy desk · " + money(S.balance);
     const user = "copy the top " + S.top_n + " traders on fomo by 30D PnL (" + top + ", …). buy " + S.delay_s + "s after they buy, " + r.ticket_pct + "% per copy, max " + r.max_open + " open. sell when they sell. stop −" + r.stop_pct + "%, take 50% profit at +" + r.tp1_pct + "%, the rest at +" + r.tp2_pct + "%.";
-    const waiting = S.top_n - S.tracked;
-    const bot = "On it. " + money(S.balance) + " on " + S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + ". Every buy copied " + S.delay_s + "s later, same exits, stop −" + r.stop_pct + "%, 50% out at +" + r.tp1_pct + "%, rest at +" + r.tp2_pct + "%. " + (waiting > 0 ? waiting + " of the top " + S.top_n + " wait for the FOMO connection (no wallet yet)." : "") + " Demo only.";
+    const waiting = S.top_n - fomoTracked();
+    const bot = "On it. " + money(S.balance) + " on " + S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + ". Every buy copied " + S.delay_s + "s later, same exits, stop −" + r.stop_pct + "%, 50% out at +" + r.tp1_pct + "%, rest at +" + r.tp2_pct + "%. " + (S.public_n ? S.public_n + " of them are publieke Solana-traders (kolscan.io leaderboard). " : "") + (waiting > 0 ? waiting + " of the top " + S.top_n + " wait for the FOMO connection (no wallet yet)." : "") + " Demo only.";
     const chips = tr.map((l) => '<span class="cchip">' + av(l.handle) + esc(l.handle) + "</span>").join("") + [["Watcher", "#38c6f4"], ["Copier", "#ff9f0a"], ["Executor", "#a259ff"], ["Risk", "#ff453a"]].map((x) => '<span class="cchip"><i style="background:' + x[1] + '"></i>' + x[0] + "</span>").join("");
     $("c-body").innerHTML = '<div class="bub-u">' + user + '</div><div class="bot-row"><span class="gk"></span><div class="bub-b">' + esc(bot) + '</div></div><div class="cchips">' + chips + "</div>" +
       chatExtra.map((m) => (m.u ? '<div class="bub-u" style="margin-top:18px">' + esc(m.t) + "</div>" : '<div class="bot-row"><span class="gk"></span><div class="bub-b">' + esc(m.t) + "</div></div>")).join("");
@@ -221,7 +225,7 @@
 
   /* ---------- ACTIVITY / ACCOUNT ---------- */
   function renderActivity() { $("a-sub").textContent = "tonight · copying " + S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + " " + S.delay_s + "s behind"; $("a-feed").innerHTML = feedHtml(S.activity, feedF); }
-  function renderAccount() { const r = S.rules; $("ac-tr").textContent = S.tracked + " van top " + S.top_n + " gevolgd"; $("ac-size").textContent = r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = "−" + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · same exits"; }
+  function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = "−" + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · same exits"; }
   /* ---------- POSITION detail ---------- */
   function findPos(id) { const o = (S.open || []).find((p) => String(p.id) === String(id)); if (o) return { p: o, open: true }; const c = (S.closed || []).find((p) => String(p.id) === String(id)); return c ? { p: c, open: false } : null; }
   async function candles(pool, fromMs, toMs) {
@@ -328,7 +332,7 @@
     const l = leaders().find((x) => x.handle === handle); if (!l) return; const r = S.rules;
     const mine = (S.open || []).filter((p) => p.leader === handle).concat((S.closed || []).filter((p) => p.leader === handle));
     const rows = mine.length ? mine.map((p) => { const isOpen = (S.open || []).some((o) => o.id === p.id); const g = isOpen ? p.value - p.size_usd * p.remaining : p.pnl; return '<div class="fr" data-pos="' + p.id + '"><div class="ic">' + tokIcon(p.mint, p.symbol) + '</div><div class="m"><b>' + esc(p.symbol || short(p.mint)) + "</b><span>" + money(p.size_usd) + " in · " + (isOpen ? "open · live" : esc(exitName(p.reason))) + '</span></div><div class="v"><b class="' + cls(g) + '">' + sMoney(g) + "</b><span>" + pct(p.pct) + "</span></div></div>"; }).join("") : "";
-    $("tr-body").innerHTML = '<div class="sh-h left">' + av(handle, "big") + '<div><b style="font-size:20px">' + esc(handle) + '</b><div class="mut xs">#' + l.rank + " · " + kfmt(l.pnl_30d_usd) + " 30D PnL</div></div>" + (l.tracked ? '<span class="cchip" style="margin-left:auto;color:#34d659">● copying</span>' : '<span class="cchip" style="margin-left:auto;color:#8e8e93">geen wallet</span>') + "</div>" +
+    $("tr-body").innerHTML = '<div class="sh-h left">' + av(handle, "big") + '<div><b style="font-size:20px">' + esc(handle) + '</b><div class="mut xs">' + rankLbl(l) + " · " + pnl30(l) + " 30D PnL" + (isPub(l) ? " · publieke Solana-trader (bron kolscan.io)" : "") + "</div></div>" + (l.tracked ? '<span class="cchip" style="margin-left:auto;color:#34d659">● copying</span>' : '<span class="cchip" style="margin-left:auto;color:#8e8e93">geen wallet</span>') + "</div>" +
       '<div class="mut xs b6" style="letter-spacing:.6px;margin:8px 0 6px">GROK BOT COPIED FROM ' + esc(handle.toUpperCase()) + '</div><div class="card" style="margin-top:0;padding:6px 14px">' + rows + '<div class="mut sm" style="padding:12px 0">' + (l.tracked ? "watching " + esc(handle) + " for the next buy…" + (l.verified ? "" : " (wallet niet geverifieerd)") : esc(l.why_not || "")) + "</div></div>" +
       '<div class="mut xs b6" style="letter-spacing:.6px;margin:16px 0 6px">COPY RULES</div><div class="g2" style="margin-top:0"><div class="cell"><span>Delay</span><b>' + S.delay_s + 's after each buy</b></div><div class="cell"><span>Exits</span><b>same as ' + esc(handle) + '</b></div><div class="cell"><span>Take profit</span><b>50% +' + r.tp1_pct + "% · rest +" + r.tp2_pct + '%</b></div><div class="cell"><span>Stop</span><b>−' + r.stop_pct + "% · " + r.ticket_pct + "% per copy</b></div></div>";
     openSheet("sh-trader");
