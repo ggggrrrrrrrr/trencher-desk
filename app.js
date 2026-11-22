@@ -7,6 +7,21 @@
   const $ = (id) => document.getElementById(id);
   const HC = {};
   function setH(id) { return HC[id] || (HC[id] = { set v(html) { const el = $(id); if (el && el._h !== html) { el.innerHTML = html; el._h = html; } } }); }
+  /* v39: two books. RAW = app.json; S = the book on screen (ECHT GELD = Phantom wallet, SIM = demo). */
+  const BOOK_KEY = "cd_book"; let RAW = null;
+  function book() { let b = ""; try { b = localStorage.getItem(BOOK_KEY) || ""; } catch (e) {} return b === "sim" ? "sim" : "live"; }
+  function isLive() { return book() === "live" && !!(RAW && RAW.live_book); }
+  function viewOf(j) { if (!j) return j; if (book() !== "live" || !j.live_book) return j; const L = j.live_book; return Object.assign({}, j, L, { sim: false, live: true, tracked: j.tracked, top_n: j.top_n, public_n: j.public_n, leaders: j.leaders, watch: j.watch, last_watch: j.last_watch, tokens: j.tokens, agents: j.agents, delay_s: j.delay_s, pending: j.pending }); }
+  function setBook(b) { try { localStorage.setItem(BOOK_KEY, b); } catch (e) {} if (RAW) { S = viewOf(RAW); } renderBookUI(); renderAll(); }
+  const SOLSCAN = "https://solscan.io/tx/";
+  function txLink(sig, lab) { return sig ? '<a class="tx" href="' + SOLSCAN + encodeURIComponent(sig) + '" target="_blank" rel="noopener">' + esc(lab || "tx ↗") + "</a>" : ""; }
+  function renderBookUI() {
+    const live = isLive();
+    document.querySelectorAll("#booksw [data-b]").forEach((x) => x.classList.toggle("on", x.getAttribute("data-b") === (live ? "live" : "sim")));
+    for (const id of ["h-mode", "l-mode"]) { const el = $(id); if (el) { el.textContent = live ? "ECHT GELD" : "SIM"; el.className = "modetag" + (live ? " real" : ""); } }
+    document.title = live ? "copy desk · ECHT GELD" : "copy desk · demo";
+    const w = $("h-wal"); if (w) { const L = RAW && RAW.live_book && RAW.live_book.wallet; w.textContent = live && L ? "Phantom " + short(L.address) + " · " + (num(L.sol) != null ? Number(L.sol).toFixed(4) + " SOL" : "") + (num(L.usdc) ? " + " + Number(L.usdc).toFixed(2) + " USDC" : "") + (L.positions_usd ? " + " + money(L.positions_usd) + " in posities" : "") : ""; }
+  }
   let S = null, range = "LIVE", feedF = "all", homeTab = "tokens", chip = "trending", screen = "home", openPosId = null;
 
   /* ---------- login link ---------- */
@@ -121,8 +136,8 @@
   function renderHome() {
     setH("h-bal").v = big(S.balance);
     const ch = $("h-ch"); ch.className = cls(S.change24h) || "g"; ch.textContent = sMoney(S.change24h);
-    const started = isStarted();
-    $("h-dep-pill").classList.toggle("hidden", started); $("h-btns").classList.toggle("hidden", !started);
+    const started = isStarted() || isLive();
+    $("h-dep-pill").classList.toggle("hidden", started); $("h-btns").classList.toggle("hidden", !started || isLive());
     const st = S.leader_stats || {};
     setH("h-traders").v = leaders().filter((l) => l.tracked).concat(leaders().filter((l) => !l.tracked)).map((l) => '<button type="button" class="tc' + (l.tracked ? "" : " off") + '" data-tr="' + esc(l.handle) + '"><div class="n">' + av(l.handle) + esc(l.handle) + '</div><div class="st"><b>' + pnl30(l) + "</b> 30D" + (isPub(l) ? " · publiek" : "") + " · <b>" + ((st[l.handle] || {}).copies || 0) + "</b> " + (l.tracked ? "trades" : "· geen wallet") + "</div></button>").join("");
     renderTokenList();
@@ -152,12 +167,12 @@
   function actRow(a) {
     const sym = symOf(a); let title, sub, right;
     if (a.kind === "copies") {
-      title = "Copied " + esc(sym); sub = (a.lag != null ? a.lag + "s after " : "after ") + esc(a.leader) + " · " + hhmm(a.ts);
+      title = "Copied " + esc(sym); sub = (a.lag != null ? a.lag + "s after " : "after ") + esc(a.leader) + " · " + hhmm(a.ts) + (a.tx ? " · " + txLink(a.tx) : "");
       right = "<b>" + money(a.size) + "</b><span>" + (a.mcap ? "at " + kfmt(a.mcap) + " MC" : "") + "</span>";
     } else if (a.kind === "exits") {
       const r = String(a.reason || ""); const tp = /^TP/.test(r), stop = /^stop/.test(r);
       title = (tp ? "Took profit · " : stop ? "Stopped · " : "Sold ") + esc(sym);
-      sub = (tp ? esc(r.replace(/\s*\(.*\)/, "")) + " rule" : stop ? "stop rule · −" + ((S && S.rules && S.rules.stop_pct) || 15) + "%" : esc(a.leader) + " sold · same exit") + " · " + hhmm(a.ts);
+      sub = (tp ? esc(r.replace(/\s*\(.*\)/, "")) + " rule" : stop ? "stop rule · −" + ((S && S.rules && S.rules.stop_pct) || 15) + "%" : esc(a.leader) + " sold · same exit") + " · " + hhmm(a.ts) + (a.tx ? " · " + txLink(a.tx) : "");
       right = '<b class="' + cls(a.gain) + '">' + sMoney(a.gain) + "</b><span>" + pct(a.pct) + "</span>";
     } else {
       title = esc(a.text); sub = "rule · " + (a.leader ? esc(a.leader) + " · " : "") + (a.symbol ? esc(a.symbol) + " · " : "") + hhmm(a.ts); right = "";
@@ -270,7 +285,22 @@
 
   /* ---------- ACTIVITY / ACCOUNT ---------- */
   function renderActivity() { $("a-sub").textContent = "tonight · copying " + S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + " · " + behind(); setH("a-feed").v = feedHtml(S.activity, feedF); }
-  function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = "−" + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · same exits"; }
+  function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = r.ticket_pct + "% · max " + r.max_open + " open" + (isLive() ? " · max " + (r.max_trade_pct || 35) + "% per trade · min $" + (r.min_trade_usd || 2) : ""); $("ac-rules").textContent = "−" + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · same exits"; renderPhantom(); }
+  function renderPhantom() {
+    const L = RAW && RAW.live_book; const st = $("ph-status"); if (!st) return;
+    if (!L) { st.textContent = "Nog geen gegevens"; st.className = "k-on warn"; return; }
+    const w = L.wallet || {};
+    st.textContent = L.killed ? "Gestopt · verlieslimiet bereikt" : !L.enabled ? "Gekoppeld · echt geld staat uit" : L.buys_on ? "Gekoppeld · ECHT GELD actief" : "Gekoppeld · kopen gepauzeerd";
+    st.className = "k-on" + (L.killed || !L.buys_on ? " warn" : "");
+    $("ph-addr").textContent = short(w.address);
+    $("ph-sol").textContent = num(w.sol) != null ? Number(w.sol).toFixed(4) + " SOL · " + money(w.sol * (w.sol_usd || 0)) : "—";
+    $("ph-usdc").textContent = num(w.usdc) != null ? Number(w.usdc).toFixed(2) + " USDC" : "—";
+    $("ph-pos").textContent = money(w.positions_usd || 0) + " · " + (L.open || []).length + " open";
+    setH("ph-total").v = money(w.total_usd);
+    $("ph-limit").textContent = L.start_equity != null ? money(L.start_equity) + " · " + money(L.kill_floor) : "nog niet gestart";
+    $("ph-buys").textContent = L.buys_on ? "aan · " + (L.buys_24h || 0) + "/" + (L.max_buys_24h || 40) + " vandaag" : "uit · " + (L.buys_off_why || "");
+    $("ph-upd").textContent = w.updated ? "Saldo uit de wallet · bijgewerkt " + hhmm(w.updated) + " (" + ago(w.updated) + " geleden)" : "";
+  }
   /* ---------- POSITION detail ---------- */
   function findPos(id) { const o = (S.open || []).find((p) => String(p.id) === String(id)); if (o) return { p: o, open: true }; const c = (S.closed || []).find((p) => String(p.id) === String(id)); return c ? { p: c, open: false } : null; }
   /* v37: GeckoTerminal free tier is ~30 calls/min; renderPos runs on every 5s poll, so cache candles
@@ -311,6 +341,7 @@
       '<div class="kv"><span><span class="gk sm"></span>Grok Bot <em>copied · ' + (lag != null ? lag + "s later" : "") + '</em></span><b class="mut">' + money(p.size_usd) + " · " + hhmm(p.opened) + "</b></div>";
     for (const e of (D.exits || [])) tl += '<div class="kv"><span><span class="gk sm"></span>Grok Bot <em>sold · ' + esc(String(e.reason || "").replace(/\s*\(.*\)/, "")) + '</em></span><b class="' + cls(e.gain) + '">' + sMoney(e.gain) + " · " + hhmm(e.ts) + "</b></div>";
     if (f.open) tl += '<div class="kv dim"><span><span class="gk sm"></span>Grok Bot <em>sells at ' + (p.tp1_done ? "+" + r.tp2_pct + "%" : "+" + r.tp1_pct + "% / +" + r.tp2_pct + "%") + '</em></span><b class="mut">waiting · ' + fmtV(p.entry_usd * (1 + (p.tp1_done ? r.tp2_pct : r.tp1_pct) / 100)) + "</b></div>";
+    if (isLive()) { const txs = [D.tx || p.tx].concat(D.sell_txs || p.sell_txs || []).filter(Boolean); if (txs.length) tl += '<div class="kv"><span><span class="modetag real">ECHT GELD</span> transacties</span><b>' + txs.map((t, i) => txLink(t, i ? "verkoop " + i + " ↗" : "koop ↗")).join(" · ") + "</b></div>"; }
     setH("p-cards").v = pos + risk + '<div class="tl">' + tl + "</div>";
     // banner
     const b = $("p-banner");
@@ -424,7 +455,7 @@
     seg($("a-chips"), "data-f", (f) => { feedF = f; renderActivity(); });
     seg($("h-tabs"), "data-t", (t) => { homeTab = t; renderTokenList(); refreshTokens(); });
     seg($("h-chips"), "data-c", (c) => { chip = c; renderTokenList(); refreshTokens(); });
-    document.addEventListener("click", (ev) => { const t = ev.target.closest("[data-tr]"); if (t && !ev.target.closest("[data-pos]")) { openTrader(t.getAttribute("data-tr")); return; } const p = ev.target.closest("[data-pos]"); if (p && p.getAttribute("data-pos")) openPos(p.getAttribute("data-pos")); });
+    document.addEventListener("click", (ev) => { const t = ev.target.closest("[data-tr]"); if (t && !ev.target.closest("[data-pos]")) { openTrader(t.getAttribute("data-tr")); return; } const p = ev.target.closest("[data-pos]"); if (p && p.getAttribute("data-pos") && !ev.target.closest("a")) openPos(p.getAttribute("data-pos")); });
     $("ov").addEventListener("click", closeSheets); document.querySelectorAll("[data-x]").forEach((b) => b.addEventListener("click", closeSheets));
     $("h-dep-pill").addEventListener("click", openDeposit); $("h-dep").addEventListener("click", openDeposit);
     $("h-wd").addEventListener("click", () => { const n = (S.open || []).length; $("wd-pos").textContent = n ? n + " open" : "all closed ✓"; openSheet("sh-wd"); });
@@ -432,7 +463,7 @@
     $("l-night").addEventListener("click", openNight);
     $("dep-pad").addEventListener("click", (ev) => { if (!ev.target.closest("button")) return; const a = $("dep-amt"); a.classList.add("shake"); setTimeout(() => a.classList.remove("shake"), 120); $("dep-note").textContent = "Demo-bedrag staat vast op " + money((S && S.book.start_usd) || 100) + " (geen echt geld)."; });
     $("dep-go").addEventListener("click", () => { if (isStarted()) { closeSheets(); toast("Demo loopt al", money(S ? S.balance : 0) + " demo-saldo · nieuwe demo met $100: stuur “demo reset” in Telegram"); return; } try { localStorage.setItem(START_KEY, "1"); } catch (e) {} const g = $("dep-go"); g.className = "btn-blue big okd"; g.textContent = "✓ Gestart"; setTimeout(() => { closeSheets(); renderAll(); toast("Demo gestart", money((S && S.book.start_usd) || 100) + " demo-saldo · geen echt geld"); }, 900); });
-    $("k-btn").addEventListener("click", () => toast("Komt na de FOMO-koppeling", "Echt geld staat uit. Eerst jouw keuze en een testorder van $1."));
+    seg($("booksw"), "data-b", (b) => setBook(b));
     document.addEventListener("click", (ev) => { const a = ev.target.closest("[data-ag]"); if (a) { agentInfo(a.getAttribute("data-ag")); return; } const t = ev.target.closest("[data-mint]"); if (t && !ev.target.closest("a")) openToken(t.getAttribute("data-mint")); });
     $("c-send").addEventListener("click", sendChat); $("c-in").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
     $("login-save").addEventListener("click", () => { const d = extractDataPath($("login-link").value); if (!d) { toast("Dat is geen inloglink", "Plak de volledige link uit Telegram."); return; } try { localStorage.setItem(DATA_KEY, d); } catch (e) {} $("login-panel").classList.add("hidden"); refresh(); });
@@ -455,7 +486,7 @@
       '<a class="btn-grey wide" style="margin-top:10px;display:block;text-align:center;text-decoration:none" href="https://dexscreener.com/solana/' + encodeURIComponent(mint) + '" target="_blank" rel="noopener">Grafiek op DexScreener</a>';
     openSheet("sh-token"); const x = document.querySelector("#tk-body [data-x2]"); if (x) x.addEventListener("click", closeSheets);
   }
-  function sendChat() { const v = $("c-in").value.trim(); if (!v) return; $("c-in").value = ""; chatExtra.push({ u: 1, t: v }, { t: "Deze app is alleen-lezen. Geef taken via Telegram, bijv. “demo”, “demo reset” of “set app.ticket_pct to 20”. Echt geld is nog niet actief." }); renderChat(); }
+  function sendChat() { const v = $("c-in").value.trim(); if (!v) return; $("c-in").value = ""; chatExtra.push({ u: 1, t: v }, { t: "Deze app is alleen-lezen. Geef taken via Telegram, bijv. “live”, “live stop”, “live start”, “demo” of “demo reset”." }); renderChat(); }
 
   /* ---------- load ---------- */
   async function refreshTokens() {
@@ -468,10 +499,10 @@
   }
   const SNAP_KEY = "cd_last_app", POLL_MS = 5000;
   function useSnapshot(j, cached) {
-    S = j; const age = (Date.now() - Date.parse(S.updatedAt || "")) / 1000; const b = $("error");
+    RAW = j; S = viewOf(j); renderBookUI(); const age = (Date.now() - Date.parse(S.updatedAt || "")) / 1000; const b = $("error");
     if (!cached && isFinite(age) && age > 15 * 60) { b.textContent = "Gegevens zijn " + Math.round(age / 60) + " min oud. De watchdog herstart de desk."; b.classList.remove("hidden"); } else b.classList.add("hidden");
     renderAll();
-    if (!isStarted() && !refresh.asked) { refresh.asked = true; openDeposit(); }
+    if (!isLive() && !isStarted() && !refresh.asked) { refresh.asked = true; openDeposit(); }
   }
   async function refresh() {
     if (!dataPath()) { $("login-panel").classList.remove("hidden"); return; }
