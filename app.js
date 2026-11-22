@@ -451,6 +451,7 @@
       '<div class="g2" style="margin-top:6px"><div class="cell"><span>Prijs</span><b>' + price(t.price) + '</b></div><div class="cell"><span>Market cap</span><b>' + kfmt(t.mc) + '</b></div><div class="cell"><span>24h</span><b class="' + cls(t.ch) + '">' + pct(t.ch, 2) + '</b></div><div class="cell"><span>Demo</span><b>' + (held ? money(held.value) + " open" : "geen positie") + "</b></div></div>" +
       (rows ? '<div class="mut xs b6" style="letter-spacing:.6px;margin:14px 0 6px">GEVOLGDE TRADERS</div><div class="card" style="margin-top:0;padding:6px 14px">' + rows + "</div>" : "") +
       (held ? '<button type="button" class="btn-blue wide" style="margin-top:12px" data-pos="' + held.id + '">Bekijk demo-positie</button>' : "") +
+      '<a class="btn-blue big" id="tk-fomo" style="margin-top:12px;display:block;text-align:center;text-decoration:none" href="https://fomo.family/tokens/solana/' + encodeURIComponent(mint) + '" target="_blank" rel="noopener">Open op FOMO</a>' +
       '<a class="btn-grey wide" style="margin-top:10px;display:block;text-align:center;text-decoration:none" href="https://dexscreener.com/solana/' + encodeURIComponent(mint) + '" target="_blank" rel="noopener">Grafiek op DexScreener</a>';
     openSheet("sh-token"); const x = document.querySelector("#tk-body [data-x2]"); if (x) x.addEventListener("click", closeSheets);
   }
@@ -491,7 +492,7 @@
   function wake() { if (document.hidden) { clearTimeout(pollT); return; } refresh().then(schedule); refreshTokens(); }
   captureFromHash(); wire(); wirePush(); wireScrub();
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register(new URL("sw.js?v=37", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
+    navigator.serviceWorker.register(new URL("sw.js?v=38", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
     let rl = false; const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener("controllerchange", () => { if (rl || !had) return; rl = true; location.reload(); });
   }
   loadCached(); refresh().then(schedule);
