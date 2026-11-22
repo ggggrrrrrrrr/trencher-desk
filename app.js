@@ -409,12 +409,12 @@
 
   /* ---------- load ---------- */
   async function refreshTokens() {
-    if (!S || refreshTokens.busy) return; refreshTokens.busy = true;
+    if (!S) return; if (refreshTokens.busy) { refreshTokens.again = true; return; } refreshTokens.busy = true; refreshTokens.again = false;
     try { await loadExternal();
     const ms = new Set(tokenMints()); (S.tokens || []).forEach((t) => ms.add(t.mint)); (S.open || []).concat(S.closed || []).forEach((p) => ms.add(p.mint)); Object.values(S.last_watch || {}).forEach((w) => ms.add(w.mint));
     if (homeTab === "tokens" && chip === "grad") graduated.forEach((m) => ms.add(m));
     const n = await loadTokens([...ms]); if (n || !refreshTokens.done) renderAll(); refreshTokens.done = true;
-    } finally { refreshTokens.busy = false; }
+    } finally { refreshTokens.busy = false; if (refreshTokens.again) setTimeout(refreshTokens, 0); }
   }
   const SNAP_KEY = "cd_last_app", POLL_MS = 5000;
   function useSnapshot(j, cached) {

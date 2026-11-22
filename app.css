@@ -160,3 +160,4 @@ button{font-family:inherit;cursor:pointer}
 .banner{margin:10px 20px;padding:10px 12px;border-radius:12px;background:#2a1012;border:1px solid #5a1d1f;color:#ffb4b4;font-size:13px}
 .login{margin:14px 20px;background:var(--card);border-radius:16px;padding:14px}.login-t{font-weight:600}
 .c-lab.left{transform:translate(0,-130%)}
+.tlist .tr,.ag,.cg{cursor:pointer}.tlist .tr:active,.ag:active{opacity:.7}

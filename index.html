@@ -9,13 +9,14 @@
   <meta name="apple-mobile-web-app-title" content="copy desk">
   <meta name="theme-color" content="#000000">
   <title>copy desk · demo</title>
-  <link rel="manifest" href="manifest.json?v=31">
+  <link rel="manifest" href="manifest.json?v=33">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="app.css?v=31">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="app.js?v=33" as="script">
+  <link rel="stylesheet" href="app.css?v=33">
 </head>
 <body>
 <div id="app">
@@ -98,7 +99,7 @@
       <div class="k-t">Koppel FOMO</div>
       <div class="k-off">Echt geld: nog niet actief</div>
       <p class="mut sm">Deze app handelt alleen in demo. Geen koppeling met je FOMO-account, geen login, geen orderpad. De app vraagt nooit om je wachtwoord, sleutels of seed. Echt geld komt pas als jij daarvoor kiest, met eerst één testorder van $1.</p>
-      <button type="button" class="btn-blue wide" disabled>Koppelen · nog niet actief</button>
+      <button type="button" class="btn-grey wide" id="k-btn">Koppelen · nog niet actief</button>
     </div>
     <div class="card">
       <div class="k-t sm2">Regels</div>
@@ -168,6 +169,10 @@
     <div id="n-tr"></div>
     <div class="mut xs" style="margin-top:10px">SIM · demo. Nieuwe demo met $100: Telegram “demo reset”.</div>
   </section>
+  <section class="sheet hidden" id="sh-token">
+    <div class="grab"></div>
+    <div id="tk-body"></div>
+  </section>
   <section class="sheet hidden" id="sh-trader">
     <div class="grab"></div>
     <div id="tr-body"></div>
@@ -185,6 +190,6 @@
     </div>
   </section>
 </div>
-<script src="app.js?v=32"></script>
+<script src="app.js?v=33"></script>
 </body>
 </html>
