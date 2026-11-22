@@ -1,7 +1,7 @@
-/* desk-static-v34: app shell cached for instant start; index network-first (2.5s);
+/* desk-static-v35: app shell cached for instant start; index network-first (2.5s);
    versioned assets + fonts stale-while-revalidate; never cache /d/ data (including 404s). */
-const CACHE = "desk-static-v34";
-const SHELL = ["./", "index.html", "app.css?v=34", "app.js?v=34", "manifest.json?v=34", "icons/icon-192.png", "icons/apple-touch-icon.png"];
+const CACHE = "desk-static-v35";
+const SHELL = ["./", "index.html", "app.css?v=35", "app.js?v=35", "manifest.json?v=35", "icons/icon-192.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {

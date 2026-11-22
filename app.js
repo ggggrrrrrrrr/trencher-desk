@@ -110,6 +110,9 @@
   }
 
   /* ---------- HOME ---------- */
+  function dly() { const d = Number(S && S.delay_s); return isFinite(d) && d > 0 ? Math.round(d) : 0; }
+  function dlyShort() { return dly() ? dly() + "s" : "direct"; }
+  function behind() { return dly() ? dly() + "s behind" : "direct"; }
   function leaders() { return (S && S.leaders) || []; }
   function isPub(l) { return l && l.group === "public"; }
   function pnl30(l) { return isPub(l) ? "◎" + Math.round(l.pnl_30d_sol || 0) + " SOL" : kfmt(l.pnl_30d_usd); }
@@ -228,12 +231,12 @@
   function renderLive() {
     const tr = leaders().filter((l) => l.tracked);
     setH("l-stack").v = tr.slice(0, 4).map((l) => av(l.handle)).join("");
-    $("l-n").textContent = S.tracked + " trader" + (S.tracked === 1 ? "" : "s");
+    $("l-behind").textContent = " · " + behind(); $("l-n").textContent = S.tracked + " trader" + (S.tracked === 1 ? "" : "s");
     $("l-open").textContent = (S.open || []).length + " open";
     if (!SCR.on) setH("l-bal").v = big(S.balance);
     const c = SCR.on ? { } : $("l-ch"); c.className = cls(S.since_deposit) || "g"; c.textContent = (S.since_deposit >= 0 ? "▲ " : "▼ ") + money(Math.abs(S.since_deposit)) + " (" + pct(S.since_deposit_pct, 0) + ")";
     renderLiveChart();
-    $("l-gridsub").textContent = S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + " · " + S.delay_s + "s → Grok Bot";
+    $("l-gridsub").textContent = S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + " · " + dlyShort() + " → Grok Bot";
     const lw = S.last_watch || {};
     const score = (l) => ((S.open || []).some((p) => p.leader === l.handle) ? 4e15 : 0) + ((S.closed || []).some((p) => p.leader === l.handle) ? 2e15 : 0) + (lw[l.handle] ? Date.parse(lw[l.handle].ts) || 0 : 0);
     const cells = tr.slice().sort((a, b) => score(b) - score(a)).concat(leaders().filter((l) => !l.tracked)).slice(0, 4);
@@ -243,10 +246,10 @@
       const mine = (S.open || []).find((p) => p.leader === l.handle) || (S.closed || []).find((p) => p.leader === l.handle);
       let res = '<div class="res"><span class="mut" style="font-weight:600">' + (l.tracked ? "nog geen kopie" : rankLbl(l) + " · " + pnl30(l) + " 30D") + "</span></div>";
       if (mine) { const isOpen = (S.open || []).some((p) => p.id === mine.id); const v = isOpen ? mine.pct : mine.pct; res = '<div class="res ' + (v > 0 ? "win" : v < 0 ? "loss" : "") + '" data-pos="' + mine.id + '">' + tokIcon(mine.mint, mine.symbol) + '<span class="' + cls(v) + '">' + pct(v) + '</span><span class="v">' + (isOpen ? money(mine.value) : esc(mine.reason || "")) + "</span></div>"; }
-      return '<div class="cg' + (w && Date.now() - Date.parse(w.ts) < 120e3 ? " act" : "") + '" data-tr="' + esc(l.handle) + '" style="' + (l.tracked ? "" : "opacity:.5") + '"><div><div class="t">' + av(l.handle) + "<b>" + esc(l.handle) + '</b><span class="s30">' + S.delay_s + 's</span></div><div class="a">' + a + "</div></div>" + res + "</div>";
+      return '<div class="cg' + (w && Date.now() - Date.parse(w.ts) < 120e3 ? " act" : "") + '" data-tr="' + esc(l.handle) + '" style="' + (l.tracked ? "" : "opacity:.5") + '"><div><div class="t">' + av(l.handle) + "<b>" + esc(l.handle) + '</b><span class="s30">' + dlyShort() + '</span></div><div class="a">' + a + "</div></div>" + res + "</div>";
     }).join("");
     const ag = S.agents || {}, lc = S.last_copy;
-    const A = [["w", "watcher", "Watcher", "#38c6f4", "watching " + S.tracked], ["c", "copier", "Copier", "#ff9f0a", S.pending ? S.pending + " waiting · 30s" : lc ? esc(symOf(lc)) + " in " + (lc.lag || 30) + "s" : "idle"], ["e", "executor", "Executor", "#a259ff", lc ? "bought " + esc(symOf(lc)) : "no fills yet"], ["k", "risk", "Risk", "#ff453a", "−" + S.rules.stop_pct + "% · +" + S.rules.tp1_pct + "/+" + S.rules.tp2_pct]];
+    const A = [["w", "watcher", "Watcher", "#38c6f4", "watching " + S.tracked], ["c", "copier", "Copier", "#ff9f0a", S.pending ? S.pending + " waiting · " + dlyShort() : lc ? esc(symOf(lc)) + " in " + (lc.lag != null ? lc.lag : dly()) + "s" : "idle"], ["e", "executor", "Executor", "#a259ff", lc ? "bought " + esc(symOf(lc)) : "no fills yet"], ["k", "risk", "Risk", "#ff453a", "−" + S.rules.stop_pct + "% · +" + S.rules.tp1_pct + "/+" + S.rules.tp2_pct]];
     setH("l-agents").v = A.map((x) => '<div class="ag ' + x[0] + ((ag[x[1]] || {}).ok ? "" : " dead") + '" data-ag="' + x[1] + '"><div class="h"><i style="background:' + x[3] + '">●</i>' + x[2] + '</div><div class="s">' + x[4] + "</div></div>").join("");
     $("l-actsub").textContent = copiesTonight() + " copies tonight";
     setH("l-feed").v = feedHtml((S.activity || []).slice(0, 12), "all");
@@ -257,16 +260,16 @@
   function renderChat() {
     const r = S.rules, tr = leaders().filter((l) => l.tracked), top = leaders().slice(0, 4).map((l) => "<b>@" + esc(l.handle) + "</b>").join(", ");
     $("c-sub").textContent = "new task · copy desk · " + money(S.balance);
-    const user = "copy the top " + S.top_n + " traders on fomo by 30D PnL (" + top + ", …). buy " + S.delay_s + "s after they buy, " + r.ticket_pct + "% per copy, max " + r.max_open + " open. sell when they sell. stop −" + r.stop_pct + "%, take 50% profit at +" + r.tp1_pct + "%, the rest at +" + r.tp2_pct + "%.";
+    const user = "copy the top " + S.top_n + " traders on fomo by 30D PnL (" + top + ", …). buy " + (dly() ? dly() + "s after they buy, " : "right after they buy, ") + r.ticket_pct + "% per copy, max " + r.max_open + " open. sell when they sell. stop −" + r.stop_pct + "%, take 50% profit at +" + r.tp1_pct + "%, the rest at +" + r.tp2_pct + "%.";
     const waiting = S.top_n - fomoTracked();
-    const bot = "On it. " + money(S.balance) + " on " + S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + ". Every buy copied " + S.delay_s + "s later, same exits, stop −" + r.stop_pct + "%, 50% out at +" + r.tp1_pct + "%, rest at +" + r.tp2_pct + "%. " + (S.public_n ? S.public_n + " of them are publieke Solana-traders (kolscan.io leaderboard). " : "") + (waiting > 0 ? waiting + " of the top " + S.top_n + " wait for the FOMO connection (no wallet yet)." : "") + " Demo only.";
+    const bot = "On it. " + money(S.balance) + " on " + S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + ". Every buy copied " + (dly() ? dly() + "s later" : "directly") + ", same exits, stop −" + r.stop_pct + "%, 50% out at +" + r.tp1_pct + "%, rest at +" + r.tp2_pct + "%. " + (S.public_n ? S.public_n + " of them are publieke Solana-traders (kolscan.io leaderboard). " : "") + (waiting > 0 ? waiting + " of the top " + S.top_n + " wait for the FOMO connection (no wallet yet)." : "") + " Demo only.";
     const chips = tr.map((l) => '<span class="cchip">' + av(l.handle) + esc(l.handle) + "</span>").join("") + [["Watcher", "#38c6f4"], ["Copier", "#ff9f0a"], ["Executor", "#a259ff"], ["Risk", "#ff453a"]].map((x) => '<span class="cchip"><i style="background:' + x[1] + '"></i>' + x[0] + "</span>").join("");
     setH("c-body").v = '<div class="bub-u">' + user + '</div><div class="bot-row"><span class="gk"></span><div class="bub-b">' + esc(bot) + '</div></div><div class="cchips">' + chips + "</div>" +
       chatExtra.map((m) => (m.u ? '<div class="bub-u" style="margin-top:18px">' + esc(m.t) + "</div>" : '<div class="bot-row"><span class="gk"></span><div class="bub-b">' + esc(m.t) + "</div></div>")).join("");
   }
 
   /* ---------- ACTIVITY / ACCOUNT ---------- */
-  function renderActivity() { $("a-sub").textContent = "tonight · copying " + S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + " " + S.delay_s + "s behind"; setH("a-feed").v = feedHtml(S.activity, feedF); }
+  function renderActivity() { $("a-sub").textContent = "tonight · copying " + S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + " · " + behind(); setH("a-feed").v = feedHtml(S.activity, feedF); }
   function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = "−" + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · same exits"; }
   /* ---------- POSITION detail ---------- */
   function findPos(id) { const o = (S.open || []).find((p) => String(p.id) === String(id)); if (o) return { p: o, open: true }; const c = (S.closed || []).find((p) => String(p.id) === String(id)); return c ? { p: c, open: false } : null; }
@@ -337,7 +340,7 @@
     svg.innerHTML = g;
     const pc = (x, y) => "left:" + (x / W * 100).toFixed(1) + "%;top:" + (y / H * 100).toFixed(1) + "%";
     let L = "";
-    L += '<span class="c-lab blue" style="' + pc(Math.max(W * 0.24, X(t1)), Y(e) - 26) + '">Grok Bot +' + (p.lag_s != null ? p.lag_s : S.delay_s) + "s</span>";
+    L += '<span class="c-lab blue" style="' + pc(Math.max(W * 0.24, X(t1)), Y(e) - 26) + '">Grok Bot +' + (p.lag_s != null ? p.lag_s : dly()) + "s</span>";
     L += '<span class="c-lab blue" style="' + pc(W - 52, Y(e) + 24) + '">entry ' + esc(lab(e)) + "</span>";
     L += '<span class="c-lab green left" style="' + pc(6, Y(lines[0].px) + 20) + '">' + esc(lines[0].t) + "</span>";
     L += '<span class="c-lab green left" style="' + pc(6, Y(lines[1].px) + 20) + '">' + esc(lines[1].t) + "</span>";
@@ -365,7 +368,7 @@
     $("n-bal").textContent = money(S.balance);
     $("n-line").className = "sm b6 " + (cls(S.since_deposit) || "g"); $("n-line").textContent = money(start) + " → " + money(S.balance) + " · " + pct(S.since_deposit_pct);
     const tp = (S.activity || []).filter((a) => a.kind === "exits" && /^TP/.test(a.reason || "")).length;
-    setH("n-grid").v = '<div class="cell"><span>Copies</span><b>' + (S.activity || []).filter((a) => a.kind === "copies").length + " · " + (sum.wins || 0) + "W " + (sum.losses || 0) + 'L</b></div><div class="cell"><span>Net profit</span><b class="' + (cls(S.since_deposit) || "") + '">' + sMoney(S.since_deposit) + '</b></div><div class="cell"><span>Take profit hits</span><b>' + tp + '</b></div><div class="cell"><span>Behind traders</span><b>' + S.delay_s + "s · same exits</b></div>";
+    setH("n-grid").v = '<div class="cell"><span>Copies</span><b>' + (S.activity || []).filter((a) => a.kind === "copies").length + " · " + (sum.wins || 0) + "W " + (sum.losses || 0) + 'L</b></div><div class="cell"><span>Net profit</span><b class="' + (cls(S.since_deposit) || "") + '">' + sMoney(S.since_deposit) + '</b></div><div class="cell"><span>Take profit hits</span><b>' + tp + '</b></div><div class="cell"><span>Behind traders</span><b>' + dlyShort() + " · same exits</b></div>";
     const st = S.leader_stats || {}; const ks = Object.keys(st).sort((a, b) => st[b].pnl - st[a].pnl);
     setH("n-tr").v = ks.length ? ks.map((k) => '<div class="ntr">' + av(k) + esc(k) + ' <span class="mut">· ' + st[k].copies + " cop" + (st[k].copies === 1 ? "y" : "ies") + '</span><b class="' + cls(st[k].pnl) + '">' + sMoney(st[k].pnl) + "</b></div>").join("") : '<div class="mut sm">Nog geen kopieën in deze demo.</div>';
     openSheet("sh-night");
@@ -376,7 +379,7 @@
     const rows = mine.length ? mine.map((p) => { const isOpen = (S.open || []).some((o) => o.id === p.id); const g = isOpen ? p.value - p.size_usd * p.remaining : p.pnl; return '<div class="fr" data-pos="' + p.id + '"><div class="ic">' + tokIcon(p.mint, p.symbol) + '</div><div class="m"><b>' + esc(p.symbol || short(p.mint)) + "</b><span>" + money(p.size_usd) + " in · " + (isOpen ? "open · live" : esc(exitName(p.reason))) + '</span></div><div class="v"><b class="' + cls(g) + '">' + sMoney(g) + "</b><span>" + pct(p.pct) + "</span></div></div>"; }).join("") : "";
     setH("tr-body").v = '<div class="sh-h left">' + av(handle, "big") + '<div><b style="font-size:20px">' + esc(handle) + '</b><div class="mut xs">' + rankLbl(l) + " · " + pnl30(l) + " 30D PnL" + (isPub(l) ? " · publieke Solana-trader (bron kolscan.io)" : "") + "</div></div>" + (l.tracked ? '<span class="cchip" style="margin-left:auto;color:#34d659">● copying</span>' : '<span class="cchip" style="margin-left:auto;color:#8e8e93">geen wallet</span>') + "</div>" +
       '<div class="mut xs b6" style="letter-spacing:.6px;margin:8px 0 6px">GROK BOT COPIED FROM ' + esc(handle.toUpperCase()) + '</div><div class="card" style="margin-top:0;padding:6px 14px">' + rows + '<div class="mut sm" style="padding:12px 0">' + (l.tracked ? "watching " + esc(handle) + " for the next buy…" + (l.verified ? "" : " (wallet niet geverifieerd)") : esc(l.why_not || "")) + "</div></div>" +
-      (l.profile_url ? '<a class="btn-grey wide" style="margin-top:12px;display:block;text-align:center;text-decoration:none" href="' + esc(l.profile_url) + '" target="_blank" rel="noopener">Bekijk ' + esc(handle) + ' op kolscan.io</a>' : "") + '<div class="mut xs b6" style="letter-spacing:.6px;margin:16px 0 6px">COPY RULES</div><div class="g2" style="margin-top:0"><div class="cell"><span>Delay</span><b>' + S.delay_s + 's after each buy</b></div><div class="cell"><span>Exits</span><b>same as ' + esc(handle) + '</b></div><div class="cell"><span>Take profit</span><b>50% +' + r.tp1_pct + "% · rest +" + r.tp2_pct + '%</b></div><div class="cell"><span>Stop</span><b>−' + r.stop_pct + "% · " + r.ticket_pct + "% per copy</b></div></div>";
+      (l.profile_url ? '<a class="btn-grey wide" style="margin-top:12px;display:block;text-align:center;text-decoration:none" href="' + esc(l.profile_url) + '" target="_blank" rel="noopener">Bekijk ' + esc(handle) + ' op kolscan.io</a>' : "") + '<div class="mut xs b6" style="letter-spacing:.6px;margin:16px 0 6px">COPY RULES</div><div class="g2" style="margin-top:0"><div class="cell"><span>Delay</span><b>' + (dly() ? dly() + 's after each buy' : 'direct, same moment') + '</b></div><div class="cell"><span>Exits</span><b>same as ' + esc(handle) + '</b></div><div class="cell"><span>Take profit</span><b>50% +' + r.tp1_pct + "% · rest +" + r.tp2_pct + '%</b></div><div class="cell"><span>Stop</span><b>−' + r.stop_pct + "% · " + r.ticket_pct + "% per copy</b></div></div>";
     openSheet("sh-trader");
   }
   function confetti() {
@@ -427,7 +430,7 @@
   }
   function agentInfo(k) {
     if (!S) return; const a = (S.agents || {})[k] || {}, r = S.rules || {};
-    const what = { watcher: "kijkt naar " + S.tracked + " trader-wallets", copier: "koopt " + S.delay_s + "s na de trader" + (S.pending ? " · " + S.pending + " wacht" : ""), executor: "demo-fills met fees en slippage · " + (S.open || []).length + "/" + (S.max_open || r.max_open) + " open", risk: "stop −" + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "%" }[k] || "";
+    const what = { watcher: "kijkt naar " + S.tracked + " trader-wallets", copier: "koopt " + (dly() ? dly() + "s na de trader" : "direct na de trader") + (S.pending ? " · " + S.pending + " wacht" : ""), executor: "demo-fills met fees en slippage · " + (S.open || []).length + "/" + (S.max_open || r.max_open) + " open", risk: "stop −" + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "%" }[k] || "";
     toast(k.charAt(0).toUpperCase() + k.slice(1) + (a.ok ? " · actief" : " · geen hartslag"), what + (a.age_s != null ? " · " + a.age_s + "s geleden" : ""));
   }
   function openToken(mint) {
@@ -479,7 +482,7 @@
   function wake() { if (document.hidden) { clearTimeout(pollT); return; } refresh().then(schedule); refreshTokens(); }
   captureFromHash(); wire(); wirePush(); wireScrub();
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register(new URL("sw.js?v=34", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
+    navigator.serviceWorker.register(new URL("sw.js?v=35", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
     let rl = false; const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener("controllerchange", () => { if (rl || !had) return; rl = true; location.reload(); });
   }
   loadCached(); refresh().then(schedule);

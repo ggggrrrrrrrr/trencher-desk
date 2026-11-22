@@ -9,14 +9,14 @@
   <meta name="apple-mobile-web-app-title" content="copy desk">
   <meta name="theme-color" content="#000000">
   <title>copy desk · demo</title>
-  <link rel="manifest" href="manifest.json?v=34">
+  <link rel="manifest" href="manifest.json?v=35">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <link rel="preload" href="app.js?v=34" as="script">
-  <link rel="stylesheet" href="app.css?v=34">
+  <link rel="preload" href="app.js?v=35" as="script">
+  <link rel="stylesheet" href="app.css?v=35">
 </head>
 <body>
 <div id="app">
@@ -58,7 +58,7 @@
   <!-- LIVE dashboard -->
   <main id="s-live" class="screen hidden">
     <div class="l-head">
-      <div class="l-copy"><span class="brand-dot"></span><span class="mut">copying</span><span class="stack" id="l-stack"></span><b id="l-n">0 traders</b><span class="mut"> · 30s behind</span></div>
+      <div class="l-copy"><span class="brand-dot"></span><span class="mut">copying</span><span class="stack" id="l-stack"></span><b id="l-n">0 traders</b><span class="mut" id="l-behind"></span></div>
       <div class="mut sm" id="l-open">0 open</div>
     </div>
     <div class="bal" id="l-bal">$0<span class="dec">.00</span></div>
@@ -67,7 +67,7 @@
     <div class="tf" id="l-tf">
       <button type="button" data-r="LIVE" class="on"><i></i>LIVE</button><button type="button" data-r="1H">1H</button><button type="button" data-r="4H">4H</button><button type="button" data-r="1D">1D</button><button type="button" data-r="1W">1W</button><button type="button" data-r="ALL">ALL</button>
     </div>
-    <div class="sec-row"><h2>Copy grid</h2><span class="mut sm" id="l-gridsub">0 traders · 30s → Grok Bot</span></div>
+    <div class="sec-row"><h2>Copy grid</h2><span class="mut sm" id="l-gridsub">0 traders</span></div>
     <div class="cgrid" id="l-grid"></div>
     <div class="rail"><i></i><i></i><i></i><i></i></div>
     <div class="agents" id="l-agents"></div>
@@ -85,7 +85,7 @@
 
   <!-- ACTIVITY -->
   <main id="s-activity" class="screen hidden">
-    <div class="mut sm" id="a-sub">tonight · copying 0 traders 30s behind</div>
+    <div class="mut sm" id="a-sub">tonight · tonight</div>
     <div class="fchips" id="a-chips">
       <button type="button" data-f="all" class="on">All</button><button type="button" data-f="copies">Copies</button><button type="button" data-f="exits">Exits</button><button type="button" data-f="rules">Rules</button>
     </div>
@@ -190,6 +190,6 @@
     </div>
   </section>
 </div>
-<script src="app.js?v=34"></script>
+<script src="app.js?v=35"></script>
 </body>
 </html>
