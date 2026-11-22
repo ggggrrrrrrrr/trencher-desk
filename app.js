@@ -189,14 +189,49 @@
       '<path d="' + d + " L" + lx.toFixed(1) + " " + H + " L" + X(t0).toFixed(1) + " " + H + ' Z" fill="url(#lg)"/><path d="' + d + '" fill="none" stroke="#34d659" stroke-width="2.4" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>' + marks +
       '<circle cx="' + lx.toFixed(1) + '" cy="' + ly.toFixed(1) + '" r="5.5" fill="#34d659" stroke="#0a2a12" stroke-width="2"/>';
     setH("l-labels").v = labels;
+    const real = (S.equity || []).map((p) => ({ t: Date.parse(p.t), v: p.v })).filter((p) => isFinite(p.t) && p.t >= t0 && p.t <= now);
+    real.push({ t: now, v: S.balance, live: true });
+    SCR.pts = real.map((p) => ({ t: p.t, v: p.v, live: p.live, x: X(p.t), y: Y(p.v) }));
+    SCR.acts = acts.map((a) => ({ x: X(Date.parse(a.ts)), lab: a.kind === "copies" ? "Copied " + symOf(a) : symOf(a) + " " + sMoney(a.pnl != null ? a.pnl : a.gain) })); SCR.span = t1 - t0;
+    if (SCR.on) scrubDraw();
+  }
+  /* ---------- balance chart scrubbing (finger / mouse) ---------- */
+  const SCR = { on: false, pts: [], acts: [], fx: 0, raf: 0, span: 0 };
+  function scrubTime(t) { const o = { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ }; if (SCR.span > 20 * 3600e3) { o.day = "numeric"; o.month = "short"; } return new Date(t).toLocaleString("nl-NL", o); }
+  function scrubDraw() {
+    SCR.raf = 0; const pts = SCR.pts; if (!pts.length) return;
+    const W = 390, H = 190, x = SCR.fx * W; let best = pts[0];
+    for (const p of pts) if (Math.abs(p.x - x) < Math.abs(best.x - x)) best = p;
+    const box = $("l-scrub"); box.classList.remove("hidden");
+    box.style.setProperty("--x", (best.x / W * 100).toFixed(2) + "%"); box.style.setProperty("--y", (best.y / H * 100).toFixed(2) + "%");
+    let near = null, nd = 12; for (const a of SCR.acts) { const d = Math.abs(a.x - best.x); if (d <= nd) { nd = d; near = a; } }
+    $("l-scrub-t").textContent = (best.live ? "nu · " : "") + scrubTime(best.t) + (near ? " · " + near.lab : "");
+    const start = (S.book && S.book.start_usd) || 100, d = best.v - start;
+    setH("l-bal").v = big(best.v);
+    const c = $("l-ch"); c.className = cls(d) || "g"; c.textContent = (d >= 0 ? "▲ " : "▼ ") + money(Math.abs(d)) + " (" + pct(d / start * 100, 0) + ")";
+  }
+  function wireScrub() {
+    const wrap = $("l-chart").parentElement;
+    const at = (ev) => { const r = wrap.getBoundingClientRect(); SCR.fx = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)); if (!SCR.raf) SCR.raf = requestAnimationFrame(scrubDraw); };
+    const end = () => { if (!SCR.on) return; SCR.on = false; if (SCR.raf) { cancelAnimationFrame(SCR.raf); SCR.raf = 0; } $("l-scrub").classList.add("hidden"); if (S && screen === "live") renderLive(); };
+    wrap.addEventListener("pointerdown", (ev) => { if (ev.button > 0 || !S) return; SCR.on = true; try { wrap.setPointerCapture(ev.pointerId); } catch (e) {} at(ev); });
+    wrap.addEventListener("pointermove", (ev) => { if (SCR.on) { at(ev); if (ev.cancelable) ev.preventDefault(); } });
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach((n) => wrap.addEventListener(n, end));
+    let tx = 0, ty = 0, dir = "";
+    wrap.addEventListener("touchstart", (ev) => { const t = ev.touches[0]; tx = t.clientX; ty = t.clientY; dir = ""; }, { passive: true });
+    wrap.addEventListener("touchmove", (ev) => {
+      if (!SCR.on) return; const t = ev.touches[0];
+      if (!dir) { const dx = Math.abs(t.clientX - tx), dy = Math.abs(t.clientY - ty); if (dx < 4 && dy < 4) return; dir = dx >= dy ? "h" : "v"; }
+      if (dir === "h") { if (ev.cancelable) ev.preventDefault(); } else end();
+    }, { passive: false });
   }
   function renderLive() {
     const tr = leaders().filter((l) => l.tracked);
     setH("l-stack").v = tr.slice(0, 4).map((l) => av(l.handle)).join("");
     $("l-n").textContent = S.tracked + " trader" + (S.tracked === 1 ? "" : "s");
     $("l-open").textContent = (S.open || []).length + " open";
-    setH("l-bal").v = big(S.balance);
-    const c = $("l-ch"); c.className = cls(S.since_deposit) || "g"; c.textContent = (S.since_deposit >= 0 ? "▲ " : "▼ ") + money(Math.abs(S.since_deposit)) + " (" + pct(S.since_deposit_pct, 0) + ")";
+    if (!SCR.on) setH("l-bal").v = big(S.balance);
+    const c = SCR.on ? { } : $("l-ch"); c.className = cls(S.since_deposit) || "g"; c.textContent = (S.since_deposit >= 0 ? "▲ " : "▼ ") + money(Math.abs(S.since_deposit)) + " (" + pct(S.since_deposit_pct, 0) + ")";
     renderLiveChart();
     $("l-gridsub").textContent = S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + " · " + S.delay_s + "s → Grok Bot";
     const lw = S.last_watch || {};
@@ -442,9 +477,9 @@
   let pollT = 0;
   function schedule() { clearTimeout(pollT); if (document.hidden) return; pollT = setTimeout(async () => { await refresh(); schedule(); }, POLL_MS); }
   function wake() { if (document.hidden) { clearTimeout(pollT); return; } refresh().then(schedule); refreshTokens(); }
-  captureFromHash(); wire(); wirePush();
+  captureFromHash(); wire(); wirePush(); wireScrub();
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register(new URL("sw.js?v=33", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
+    navigator.serviceWorker.register(new URL("sw.js?v=34", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
     let rl = false; const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener("controllerchange", () => { if (rl || !had) return; rl = true; location.reload(); });
   }
   loadCached(); refresh().then(schedule);
