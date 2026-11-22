@@ -42,8 +42,8 @@ h1{font-size:28px;line-height:1.15;margin:8px 0 10px}h2{font-size:17px;margin:0}
 .ranges{display:flex;justify-content:space-between;margin-top:8px}
 .ranges button{background:transparent;border:0;color:var(--muted);font-weight:700;font-size:12px;padding:6px 8px;border-radius:8px}
 .ranges button.active{background:var(--card2);color:var(--text)}
-.pills{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 0}
-.pill{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:700}
+.pills{display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow-x:auto;margin:12px 0 0}
+.pill{display:flex;align-items:center;gap:5px;white-space:nowrap;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700}
 .pill i{width:7px;height:7px;border-radius:50%;background:var(--muted)}.pill.ok i{background:var(--green)}.pill.bad i{background:var(--red)}
 .pill .sep{color:var(--muted)}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
