@@ -391,6 +391,23 @@
     }
     rows += list.map((p) => { const isOpen = acOC === "open"; const g = isOpen ? p.value - p.size_usd * p.remaining : p.pnl; return '<div class="prow" data-pos="' + esc(p.id) + '">' + tokIcon(p.mint, p.symbol) + '<div class="pm"><b>' + esc(p.symbol || short(p.mint)) + "</b><span>" + money(p.size_usd) + " in · " + (isOpen ? (p.tp1_done ? "50% verkocht · " : "") + esc(p.leader) : esc(exitName(p.reason))) + '</span></div><div class="pv num"><b>' + (isOpen ? money(p.value) : '<span class="' + cls(g) + '">' + sMoney(g) + "</span>") + '</b><span class="' + cls(p.pct) + '">' + pct(p.pct) + "</span></div></div>"; }).join("");
     setH("ac-pos").v = rows || '<div class="empty">' + (acOC === "open" ? "Geen open posities." : "Nog geen gesloten posities.") + "</div>";
+    renderCloseAll();
+  }
+  function renderCloseAll() {
+    const b = $("ac-closeall"); if (!b || !S) return; const n = (S.open || []).length;
+    b.classList.toggle("hidden", !n || acOC !== "open"); b.textContent = "Sluit alle posities (" + n + ")" + (isLive() ? " · ECHT GELD" : " · demo");
+  }
+  function openCloseAll() {
+    if (!S) return; const live = isLive(), n = (S.open || []).length, bot = (RAW && RAW.bot) || botName(), cmd = live ? "close_all_live" : "close_all_demo";
+    if (!n) { toast("Geen open posities", ""); return; }
+    $("cl-title").textContent = "Sluit alle posities · " + (live ? "ECHT GELD" : "demo");
+    $("cl-text").textContent = live
+      ? n + " echte positie(s) worden verkocht voor SOL (exacte wallet-saldi, alleen swaps via Phantom). De koop-schakelaar verandert niet. Bevestig daarna met Start in Telegram; de bot stuurt wat er verkocht is en de PnL."
+      : n + " demo-positie(s) worden gesloten tegen de huidige prijs. ECHT GELD verandert niet. Bevestig daarna met Start in Telegram; de bot stuurt de PnL.";
+    const go = $("cl-go");
+    if (bot) go.href = "https://t.me/" + bot + "?start=" + cmd; else go.removeAttribute("href");
+    go.onclick = () => { setTimeout(closeSheets, 200); toast(bot ? "Tik in Telegram op Start" : "Stuur in Telegram", bot ? "Daarna worden alle " + (live ? "echte" : "demo") + " posities gesloten." : "sluit alles " + (live ? "live" : "demo")); };
+    openSheet("sh-close");
   }
   function renderDemo() {
     const st = $("demo-state"), btn = $("demo-btn"), hint = $("demo-hint"); if (!st || !btn) return;
@@ -599,6 +616,7 @@
     $("l-night").addEventListener("click", openNight);
     $("dep-pad").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) padKey("dep", b.textContent); });
     $("dep-go").addEventListener("click", () => sendMove("dep"));
+    $("ac-closeall").addEventListener("click", openCloseAll);
     seg($("booksw"), "data-b", (b) => setBook(b));
     document.addEventListener("click", (ev) => { const a = ev.target.closest("[data-ag]"); if (a) { agentInfo(a.getAttribute("data-ag")); return; } const t = ev.target.closest("[data-mint]"); if (t && !ev.target.closest("a")) openToken(t.getAttribute("data-mint")); });
     $("c-send").addEventListener("click", sendChat); $("c-in").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });

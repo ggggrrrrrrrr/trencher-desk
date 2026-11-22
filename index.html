@@ -9,14 +9,14 @@
   <meta name="apple-mobile-web-app-title" content="Trencher">
   <meta name="theme-color" content="#000000">
   <title>Trencher</title>
-  <link rel="manifest" href="manifest.json?v=44">
+  <link rel="manifest" href="manifest.json?v=45">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <link rel="preload" href="app.js?v=44" as="script">
-  <link rel="stylesheet" href="app.css?v=44">
+  <link rel="preload" href="app.js?v=45" as="script">
+  <link rel="stylesheet" href="app.css?v=45">
 </head>
 <body>
 <div id="app">
@@ -126,6 +126,7 @@
     <div class="pos-h"><h2>Positions (<span id="ac-pn">0</span>)</h2><div class="oc" id="ac-oc"><button type="button" data-o="open" class="on">Open</button><button type="button" data-o="closed">Closed</button></div></div>
     <div class="fpills" id="ac-pf"><button type="button" data-p="all" class="on">All</button><button type="button" data-p="tokens">Tokens</button></div>
     <div id="ac-pos" class="plist"></div>
+    <button type="button" class="btn-grey hidden" id="ac-closeall" style="display:block;width:100%;margin-top:10px;color:var(--red)">Sluit alle posities</button>
 
     <div class="card koppel" id="ph-card">
       <div class="k-t">Phantom-wallet</div>
@@ -209,6 +210,14 @@
     </div>
     <button type="button" class="btn-blue big" id="wd-go">Neem op van demo</button>
   </section>
+  <section class="sheet hidden" id="sh-close">
+    <div class="grab"></div>
+    <div class="sh-h"><span class="brand-dot"></span><b id="cl-title">Sluit alle posities</b><button type="button" class="x" data-x>✕</button></div>
+    <div class="ctr b6" style="font-size:24px;margin:8px 0 10px">Weet je het zeker?</div>
+    <div class="mut sm ctr" id="cl-text"></div>
+    <a class="btn-blue big" id="cl-go" style="display:block;text-align:center;text-decoration:none;background:var(--red);margin-top:16px" href="#" target="_blank" rel="noopener">Ja, sluit alles</a>
+    <button type="button" class="btn-grey big" data-x style="display:block;width:100%;margin-top:10px">Annuleren</button>
+  </section>
   <section class="sheet hidden" id="sh-night">
     <div class="grab"></div>
     <div class="sh-h left"><span class="gk sm" aria-hidden="true"></span><b id="n-title">Night done</b><button type="button" class="x" data-x>✕</button></div>
@@ -239,6 +248,6 @@
     </div>
   </section>
 </div>
-<script src="app.js?v=44"></script>
+<script src="app.js?v=45"></script>
 </body>
 </html>
