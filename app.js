@@ -246,7 +246,7 @@
       const mine = (S.open || []).find((p) => p.leader === l.handle) || (S.closed || []).find((p) => p.leader === l.handle);
       let res = '<div class="res"><span class="mut" style="font-weight:600">' + (l.tracked ? "nog geen kopie" : rankLbl(l) + " · " + pnl30(l) + " 30D") + "</span></div>";
       if (mine) { const isOpen = (S.open || []).some((p) => p.id === mine.id); const v = isOpen ? mine.pct : mine.pct; res = '<div class="res ' + (v > 0 ? "win" : v < 0 ? "loss" : "") + '" data-pos="' + mine.id + '">' + tokIcon(mine.mint, mine.symbol) + '<span class="' + cls(v) + '">' + pct(v) + '</span><span class="v">' + (isOpen ? money(mine.value) : esc(mine.reason || "")) + "</span></div>"; }
-      return '<div class="cg' + (w && Date.now() - Date.parse(w.ts) < 120e3 ? " act" : "") + '" data-tr="' + esc(l.handle) + '" style="' + (l.tracked ? "" : "opacity:.5") + '"><div><div class="t">' + av(l.handle) + "<b>" + esc(l.handle) + '</b><span class="s30">' + dlyShort() + '</span></div><div class="a">' + a + "</div></div>" + res + "</div>";
+      return '<div class="cg' + (w && Date.now() - Date.parse(w.ts) < 120e3 ? " act" : "") + '" data-tr="' + esc(l.handle) + '" style="' + (l.tracked ? "" : "opacity:.5") + '"><div><div class="t">' + av(l.handle) + "<b>" + esc(l.handle) + '</b><span class="s30">' + dly() + 's</span></div><div class="a">' + a + "</div></div>" + res + "</div>";
     }).join("");
     const ag = S.agents || {}, lc = S.last_copy;
     const A = [["w", "watcher", "Watcher", "#38c6f4", "watching " + S.tracked], ["c", "copier", "Copier", "#ff9f0a", S.pending ? S.pending + " waiting · " + dlyShort() : lc ? esc(symOf(lc)) + " in " + (lc.lag != null ? lc.lag : dly()) + "s" : "idle"], ["e", "executor", "Executor", "#a259ff", lc ? "bought " + esc(symOf(lc)) : "no fills yet"], ["k", "risk", "Risk", "#ff453a", "−" + S.rules.stop_pct + "% · +" + S.rules.tp1_pct + "/+" + S.rules.tp2_pct]];
@@ -482,7 +482,7 @@
   function wake() { if (document.hidden) { clearTimeout(pollT); return; } refresh().then(schedule); refreshTokens(); }
   captureFromHash(); wire(); wirePush(); wireScrub();
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register(new URL("sw.js?v=35", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
+    navigator.serviceWorker.register(new URL("sw.js?v=36", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
     let rl = false; const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener("controllerchange", () => { if (rl || !had) return; rl = true; location.reload(); });
   }
   loadCached(); refresh().then(schedule);
