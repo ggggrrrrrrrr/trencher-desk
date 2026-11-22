@@ -199,7 +199,9 @@
     const c = $("l-ch"); c.className = cls(S.since_deposit) || "g"; c.textContent = (S.since_deposit >= 0 ? "▲ " : "▼ ") + money(Math.abs(S.since_deposit)) + " (" + pct(S.since_deposit_pct, 0) + ")";
     renderLiveChart();
     $("l-gridsub").textContent = S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + " · " + S.delay_s + "s → Grok Bot";
-    const lw = S.last_watch || {}; const cells = tr.concat(leaders().filter((l) => !l.tracked)).slice(0, 4);
+    const lw = S.last_watch || {};
+    const score = (l) => ((S.open || []).some((p) => p.leader === l.handle) ? 4e15 : 0) + ((S.closed || []).some((p) => p.leader === l.handle) ? 2e15 : 0) + (lw[l.handle] ? Date.parse(lw[l.handle].ts) || 0 : 0);
+    const cells = tr.slice().sort((a, b) => score(b) - score(a)).concat(leaders().filter((l) => !l.tracked)).slice(0, 4);
     setH("l-grid").v = cells.map((l) => {
       const w = lw[l.handle]; let a = l.tracked ? "watching for the first buy…" : "geen wallet · wacht op FOMO-koppeling";
       if (w) { const t = TOK[w.mint]; a = (w.value === "buy" ? '<span class="bt">bought</span> ' : '<span class="sd">sold</span> ') + esc((t && t.sym) || short(w.mint)) + (t && t.mc ? " · " + kfmt(t.mc) : "") + " · " + ago(w.ts); }
