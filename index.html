@@ -107,6 +107,15 @@
       <button type="button" class="btn btn-primary" disabled>Koppelen (nog niet actief)</button>
       <button type="button" class="btn btn-ghost" data-go="home">Terug naar demo</button>
     </section>
+    <section class="card" style="margin-top:12px">
+      <h2>Meldingen bij winst</h2>
+      <p class="muted small">Alleen bij een gesloten trade met winst (demo). Niets anders.</p>
+      <button type="button" class="btn btn-primary" id="btn-push">Meldingen aan</button>
+      <div id="push-status" class="push-status muted small" style="margin-top:8px"></div>
+      <div id="push-key-row" class="login-row hidden"><input id="push-key-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="meldingen-link uit Telegram"><button type="button" class="btn btn-primary" id="push-key-save">Opslaan</button></div>
+      <textarea id="push-code" class="hidden" rows="3" style="width:100%;margin-top:8px;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:12px"></textarea>
+      <a id="push-open" class="btn btn-ghost hidden" href="#" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">Open Telegram</a>
+    </section>
   </main>
 
   <nav class="tabbar">
