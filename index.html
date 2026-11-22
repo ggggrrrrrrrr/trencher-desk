@@ -2,148 +2,189 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="copy desk">
-  <meta name="theme-color" content="#07080c">
+  <meta name="theme-color" content="#000000">
   <title>copy desk · demo</title>
-  <link rel="manifest" href="manifest.json?v=20">
+  <link rel="manifest" href="manifest.json?v=30">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="app.css?v=21">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="app.css?v=30">
 </head>
 <body>
+<div id="app">
   <div id="error" class="banner hidden" role="status"></div>
-
-  <!-- start screen: demo first -->
-  <section id="start" class="screen start hidden">
-    <div class="start-inner">
-      <div class="brand-big"><span class="dot"></span>copy desk</div>
-      <h1>Kopieer de top 50 traders</h1>
-      <p class="muted">Top 50 op winst (30 dagen). Elke koop wordt ~30s later nagedaan. Stop −15% · 50% eruit bij +30% · rest bij +40% · verkoopt de trader, dan verkopen wij ook.</p>
-      <button type="button" class="btn btn-primary btn-lg" id="start-demo">Demo traden · start met $100</button>
-      <button type="button" class="btn btn-ghost btn-lg" id="start-koppel">Koppel FOMO (echt geld)</button>
-      <p class="tiny muted">Echt geld is nog niet actief. Alles in deze app is demo (paper).</p>
-    </div>
+  <section id="login-panel" class="login hidden">
+    <div class="login-t">Plak de inloglink uit Telegram</div>
+    <div class="row-in"><input id="login-link" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…#d=…"><button type="button" class="btn-blue sm" id="login-save">Opslaan</button></div>
   </section>
 
-  <section id="login-panel" class="card login-panel hidden">
-    <label for="login-link">Plak de inloglink uit Telegram</label>
-    <div class="login-row">
-      <input id="login-link" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…#d=…">
-      <button type="button" class="btn btn-primary" id="login-save">Opslaan</button>
-    </div>
-  </section>
-
-  <header class="topbar" id="topbar">
-    <div class="brand"><span class="dot"></span>copy desk</div>
-    <span class="badge badge-sim" id="sim-badge">SIM</span>
-    <span class="spacer"></span>
-    <button type="button" class="icon-btn" id="btn-summary" aria-label="overzicht">☾</button>
-    <button type="button" class="icon-btn" id="btn-koppel" aria-label="koppel FOMO">⛓</button>
-  </header>
-
-  <!-- HOME -->
-  <main id="tab-home" class="tab-panel">
-    <section class="hero">
-      <div class="muted small">Demo-saldo</div>
-      <div class="balance" id="balance">$—</div>
-      <div class="change" id="change24">—</div>
-    </section>
-
-    <div class="section-head"><h2>Top traders</h2><span class="muted small" id="tracked-line">—</span></div>
-    <div class="hscroll" id="trader-cards"></div>
-
-    <div class="seg" id="home-seg">
-      <button type="button" class="seg-btn active" data-seg="open">Open</button>
-      <button type="button" class="seg-btn" data-seg="closed">Gesloten</button>
-      <button type="button" class="seg-btn" data-seg="traders">Alle 50</button>
-    </div>
-    <div id="home-list" class="list"></div>
-  </main>
-
-  <!-- LIVE -->
-  <main id="tab-live" class="tab-panel hidden">
-    <section class="live-head">
+  <!-- HOME (wallet) -->
+  <main id="s-home" class="screen">
+    <section class="h-top">
       <div>
-        <div class="live-title"><span class="pulse"></span><span id="live-copying">copying 0 traders • 30s behind</span></div>
-        <div class="muted small" id="live-updated">—</div>
+        <div class="bal" id="h-bal">$0<span class="dec">.00</span></div>
+        <div class="sub-ch"><span id="h-ch" class="g">+$0.00</span> <span class="mut">24h</span></div>
       </div>
-      <span class="badge badge-sim">SIM</span>
+      <button type="button" class="pill-blue" id="h-dep-pill">Storten</button>
     </section>
-
-    <section class="card chart-card">
-      <div class="chart-top"><div class="balance-sm" id="live-balance">$—</div><div class="change" id="live-change">—</div></div>
-      <svg id="chart" viewBox="0 0 360 160" preserveAspectRatio="none" aria-label="balans"></svg>
-      <div class="ranges" id="ranges">
-        <button type="button" data-r="LIVE" class="active">LIVE</button><button type="button" data-r="1H">1H</button><button type="button" data-r="4H">4H</button><button type="button" data-r="1D">1D</button><button type="button" data-r="1W">1W</button><button type="button" data-r="1M">1M</button><button type="button" data-r="ALL">All</button>
-      </div>
-    </section>
-
-    <div class="pills" id="agent-pills"></div>
-
-    <div class="section-head"><h2>Trader-acties</h2><span class="muted small">laatste kopen en verkopen</span></div>
-    <div class="grid" id="copy-grid"></div>
-
-    <div class="section-head"><h2>Activiteit</h2></div>
-    <div class="seg" id="feed-seg">
-      <button type="button" class="seg-btn active" data-f="all">All</button>
-      <button type="button" class="seg-btn" data-f="copies">Copies</button>
-      <button type="button" class="seg-btn" data-f="exits">Exits</button>
-      <button type="button" class="seg-btn" data-f="rules">Rules</button>
+    <div class="h-btns hidden" id="h-btns">
+      <button type="button" class="btn-grey" id="h-wd">Opnemen</button>
+      <button type="button" class="btn-blue" id="h-dep">Storten</button>
     </div>
-    <div id="feed" class="list"></div>
+    <div class="sec-t"><svg class="ico" viewBox="0 0 24 24"><path d="M7 4h10v3a5 5 0 0 1-10 0V4Zm0 1H4v1a3 3 0 0 0 3 3m10-4h3v1a3 3 0 0 1-3 3M9 14h6m-5 0v2.5c0 .8-.7 1.5-1.5 1.5h7c-.8 0-1.5-.7-1.5-1.5V14m-5 6h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Top traders <span class="mut sm">op FOMO · 30D</span></div>
+    <div class="hs" id="h-traders"></div>
+    <div class="tabs3" id="h-tabs">
+      <button type="button" data-t="watch">Watchlist</button>
+      <button type="button" data-t="tokens" class="on">Tokens</button>
+      <button type="button" data-t="perps">Perps <span class="new">New</span></button>
+    </div>
+    <div class="chips" id="h-chips">
+      <button type="button" data-c="crypto">Crypto</button>
+      <button type="button" data-c="trending" class="on">Trending</button>
+      <button type="button" data-c="held">Most held</button>
+      <button type="button" data-c="grad">Graduated</button>
+    </div>
+    <div id="h-list" class="tlist"></div>
   </main>
 
-  <!-- KOPPEL FOMO (placeholder only) -->
-  <main id="tab-koppel" class="tab-panel hidden">
-    <section class="card koppel">
-      <h2>Koppel FOMO</h2>
-      <div class="status-off">Echt geld: nog niet actief</div>
-      <p class="muted">Deze app handelt nu alleen in demo. Er is geen koppeling met je FOMO-account, geen login en geen orderpad. De app vraagt nooit om je wachtwoord, sleutels of seed.</p>
-      <p class="muted">Echt geld komt pas als jij daar zelf voor kiest, met eerst één testorder van $1.</p>
-      <button type="button" class="btn btn-primary" disabled>Koppelen (nog niet actief)</button>
-      <button type="button" class="btn btn-ghost" data-go="home">Terug naar demo</button>
-    </section>
-    <section class="card" style="margin-top:12px">
-      <h2>Meldingen bij winst</h2>
-      <p class="muted small">Alleen bij een gesloten trade met winst (demo). Niets anders.</p>
-      <button type="button" class="btn btn-primary" id="btn-push">Meldingen aan</button>
-      <div id="push-status" class="push-status muted small" style="margin-top:8px"></div>
-      <div id="push-key-row" class="login-row hidden"><input id="push-key-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="meldingen-link uit Telegram"><button type="button" class="btn btn-primary" id="push-key-save">Opslaan</button></div>
-      <textarea id="push-code" class="hidden" rows="3" style="width:100%;margin-top:8px;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:12px"></textarea>
-      <a id="push-open" class="btn btn-ghost hidden" href="#" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">Open Telegram</a>
-    </section>
+  <!-- LIVE dashboard -->
+  <main id="s-live" class="screen hidden">
+    <div class="l-head">
+      <div class="l-copy"><span class="brand-dot"></span><b>copy desk</b><span class="mut"> · copying</span><span class="stack" id="l-stack"></span><b id="l-n">0 traders</b><span class="mut"> · 30s behind</span></div>
+      <div class="mut sm" id="l-open">0 open</div>
+    </div>
+    <div class="bal" id="l-bal">$0<span class="dec">.00</span></div>
+    <div class="sub-ch"><span id="l-ch" class="g">▲ $0.00 (+0%)</span> <span class="mut">since deposit</span> <span class="sim">SIM</span></div>
+    <div class="chart-wrap"><svg id="l-chart" viewBox="0 0 390 190" preserveAspectRatio="none"></svg><div id="l-labels" class="c-labels"></div></div>
+    <div class="tf" id="l-tf">
+      <button type="button" data-r="LIVE" class="on"><i></i>LIVE</button><button type="button" data-r="1H">1H</button><button type="button" data-r="4H">4H</button><button type="button" data-r="1D">1D</button><button type="button" data-r="1W">1W</button><button type="button" data-r="ALL">ALL</button>
+    </div>
+    <div class="sec-row"><h2>Copy grid</h2><span class="mut sm" id="l-gridsub">0 traders · 30s → Grok Bot</span></div>
+    <div class="cgrid" id="l-grid"></div>
+    <div class="rail"><i></i><i></i><i></i><i></i></div>
+    <div class="agents" id="l-agents"></div>
+    <div class="sec-row"><h2>Activity</h2><span class="mut sm" id="l-actsub">0 copies tonight</span></div>
+    <div id="l-feed" class="feed"></div>
+    <button type="button" class="btn-grey wide" id="l-night">Night overzicht</button>
   </main>
 
-  <nav class="tabbar">
-    <button type="button" class="tab active" data-tab="home"><span>⌂</span>Home</button>
-    <button type="button" class="tab" data-tab="live"><span>◉</span>Live</button>
-    <button type="button" class="tab" data-tab="koppel"><span>⛓</span>FOMO</button>
+  <!-- AGENTS (task chat) -->
+  <main id="s-agents" class="screen hidden chat">
+    <div class="c-head"><span class="gk" aria-hidden="true"></span><div><b>Grok Bot</b><div class="mut xs" id="c-sub">new task · copy desk · $0.00</div></div></div>
+    <div class="c-body" id="c-body"></div>
+    <div class="c-input"><input type="text" id="c-in" placeholder="Give Grok Bot a task..." autocomplete="off"><button type="button" id="c-send" aria-label="verstuur">↑</button></div>
+  </main>
+
+  <!-- ACTIVITY -->
+  <main id="s-activity" class="screen hidden">
+    <div class="mut sm" id="a-sub">tonight · copying 0 traders 30s behind</div>
+    <div class="fchips" id="a-chips">
+      <button type="button" data-f="all" class="on">All</button><button type="button" data-f="copies">Copies</button><button type="button" data-f="exits">Exits</button><button type="button" data-f="rules">Rules</button>
+    </div>
+    <div id="a-feed" class="feed"></div>
+  </main>
+
+  <!-- ACCOUNT -->
+  <main id="s-account" class="screen hidden">
+    <div class="acc-h"><span class="av big" style="background:linear-gradient(135deg,#3b5bff,#7a3bff)">C</span><div><b>copy desk</b><div class="mut sm">demo · Grok Bot</div></div></div>
+    <div class="card koppel">
+      <div class="k-t">Koppel FOMO</div>
+      <div class="k-off">Echt geld: nog niet actief</div>
+      <p class="mut sm">Deze app handelt alleen in demo. Geen koppeling met je FOMO-account, geen login, geen orderpad. De app vraagt nooit om je wachtwoord, sleutels of seed. Echt geld komt pas als jij daarvoor kiest, met eerst één testorder van $1.</p>
+      <button type="button" class="btn-blue wide" disabled>Koppelen · nog niet actief</button>
+    </div>
+    <div class="card">
+      <div class="k-t sm2">Regels</div>
+      <div class="kv"><span>Traders</span><b id="ac-tr">—</b></div>
+      <div class="kv"><span>Per kopie</span><b id="ac-size">—</b></div>
+      <div class="kv"><span>Exits</span><b id="ac-rules">—</b></div>
+      <div class="kv"><span>Nieuwe demo</span><b>Telegram: demo reset</b></div>
+    </div>
+    <div class="card">
+      <div class="k-t sm2">Meldingen bij winst</div>
+      <p class="mut sm">Alleen bij een gesloten trade met winst (demo). Niets anders.</p>
+      <button type="button" class="btn-blue wide" id="btn-push">Meldingen aan</button>
+      <div id="push-status" class="push-status mut sm"></div>
+      <div id="push-key-row" class="row-in hidden"><input id="push-key-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="meldingen-link uit Telegram"><button type="button" class="btn-blue sm" id="push-key-save">Opslaan</button></div>
+      <textarea id="push-code" class="hidden" rows="3"></textarea>
+      <a id="push-open" class="btn-grey wide hidden" href="#" target="_blank" rel="noopener">Open Telegram</a>
+    </div>
+  </main>
+
+  <!-- POSITION detail (full screen) -->
+  <main id="s-pos" class="screen hidden">
+    <button type="button" class="back" id="p-back">‹</button>
+    <div class="bal mc"><span id="p-mc">$—</span> <span class="mcl">MC</span></div>
+    <div class="g sb" id="p-since">—</div>
+    <div class="p-who" id="p-who"></div>
+    <div class="chart-wrap pchart"><svg id="p-chart" viewBox="0 0 390 300" preserveAspectRatio="none"></svg><div id="p-labels" class="c-labels"></div><div id="p-banner" class="banner-x hidden"></div></div>
+    <div id="p-cards"></div>
+  </main>
+
+  <nav class="nav" id="nav">
+    <button type="button" data-s="home" class="on"><svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-5H9v5H4z" fill="currentColor"/></svg>Home</button>
+    <button type="button" data-s="live"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Live</button>
+    <button type="button" data-s="agents"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="16.5" cy="9" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M14.5 14.3c2.6-.4 5 1 5.8 4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Agents</button>
+    <button type="button" data-s="activity"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Activity</button>
+    <button type="button" data-s="account"><span class="av nav-av" style="background:linear-gradient(135deg,#3b5bff,#7a3bff)">C</span>Account</button>
   </nav>
 
-  <!-- position detail -->
-  <div class="modal hidden" id="pos-modal" role="dialog" aria-modal="true">
-    <div class="sheet">
-      <div class="sheet-head"><h2 id="pos-title">—</h2><button type="button" class="icon-btn" data-close>✕</button></div>
-      <div id="pos-body"></div>
+  <!-- sheets -->
+  <div class="ov hidden" id="ov"></div>
+  <section class="sheet hidden" id="sh-dep">
+    <div class="grab"></div>
+    <div class="sh-h"><span class="brand-dot"></span><b>Storten · demo</b><button type="button" class="x" data-x>✕</button></div>
+    <div class="amt" id="dep-amt">$100.00<span class="caret"></span></div>
+    <div class="mut sm ctr"><span class="cardico"></span> Demo-geld · geen echt geld · instant</div>
+    <div class="pad" id="dep-pad"><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button>.</button><button>0</button><button>⌫</button></div>
+    <div class="mut xs ctr" id="dep-note">De demo start altijd met $100.</div>
+    <button type="button" class="btn-blue big" id="dep-go">Start demo $100.00</button>
+  </section>
+  <section class="sheet hidden" id="sh-wd">
+    <div class="grab"></div>
+    <div class="sh-h"><span class="brand-dot"></span><b>Opnemen · demo</b><button type="button" class="x" data-x>✕</button></div>
+    <div class="mut sm ctr" style="margin:-4px 0 12px">Dit is een demo. Er wordt geen echt geld opgenomen.</div>
+    <div class="card list0">
+      <div class="kv"><span>Van</span><b><span class="av xs" style="background:linear-gradient(135deg,#3b5bff,#7a3bff)">C</span> @copy desk</b></div>
+      <div class="kv"><span><span class="cardico"></span> Naar</span><b class="mut">demo · geen echt geld</b></div>
+      <div class="kv"><span>Grok Bot posities</span><b id="wd-pos">—</b></div>
+      <div class="kv"><span>Fee</span><b>$0.00</b></div>
     </div>
-  </div>
-
-  <!-- night / period summary -->
-  <div class="modal hidden" id="sum-modal" role="dialog" aria-modal="true">
-    <div class="sheet">
-      <div class="sheet-head"><h2>Overzicht</h2><button type="button" class="icon-btn" data-close>✕</button></div>
-      <div class="seg" id="sum-seg">
-        <button type="button" class="seg-btn active" data-s="today">Vannacht / vandaag</button>
-        <button type="button" class="seg-btn" data-s="all">Sinds start demo</button>
-      </div>
-      <div id="sum-body"></div>
+    <button type="button" class="btn-blue big" id="wd-go">Bekijk demo-resultaat</button>
+  </section>
+  <section class="sheet hidden" id="sh-night">
+    <div class="grab"></div>
+    <div class="sh-h left"><span class="gk sm" aria-hidden="true"></span><b id="n-title">Night done</b><button type="button" class="x" data-x>✕</button></div>
+    <div class="amt left" id="n-bal">$0.00</div>
+    <div class="g sm b6" id="n-line">—</div>
+    <div class="g2" id="n-grid"></div>
+    <div id="n-tr"></div>
+    <div class="mut xs" style="margin-top:10px">SIM · demo. Nieuwe demo met $100: Telegram “demo reset”.</div>
+  </section>
+  <section class="sheet hidden" id="sh-trader">
+    <div class="grab"></div>
+    <div id="tr-body"></div>
+  </section>
+  <div class="toast hidden" id="toast"><span class="ok">✓</span><div><b id="toast-t">—</b><div class="mut xs" id="toast-s"></div></div></div>
+  <section class="done hidden" id="done">
+    <canvas id="confetti"></canvas>
+    <div class="done-card">
+      <div class="d-top"><span class="av" style="background:linear-gradient(135deg,#3b5bff,#7a3bff)">C</span><div><b>@copy desk</b><div class="mut xs">demo · Grok Bot</div></div><span class="ok big">✓</span></div>
+      <div class="mut sm">Demo-resultaat · geen echte opname</div>
+      <div class="d-amt" id="d-amt">$0.00</div>
+      <div class="sm b6" id="d-line">—</div>
+      <div class="kv"><span>Gekopieerd</span><b id="d-tr">—</b></div>
+      <button type="button" class="btn-grey wide" id="d-close">Sluiten</button>
     </div>
-  </div>
-
-  <script src="app.js?v=20"></script>
+  </section>
+</div>
+<script src="app.js?v=30"></script>
 </body>
 </html>
