@@ -9,14 +9,14 @@
   <meta name="apple-mobile-web-app-title" content="Trencher">
   <meta name="theme-color" content="#000000">
   <title>Trencher</title>
-  <link rel="manifest" href="manifest.json?v=47">
+  <link rel="manifest" href="manifest.json?v=48">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <link rel="preload" href="app.js?v=47" as="script">
-  <link rel="stylesheet" href="app.css?v=47">
+  <link rel="preload" href="app.js?v=48" as="script">
+  <link rel="stylesheet" href="app.css?v=48">
 </head>
 <body>
 <div id="app">
@@ -125,8 +125,8 @@
     </div>
     <div class="pos-h"><h2>Positions (<span id="ac-pn">0</span>)</h2><div class="oc" id="ac-oc"><button type="button" data-o="open" class="on">Open</button><button type="button" data-o="closed">Closed</button></div></div>
     <div class="fpills" id="ac-pf"><button type="button" data-p="all" class="on">All</button><button type="button" data-p="tokens">Tokens</button></div>
+    <button type="button" class="btn-grey hidden" id="ac-closeall" style="display:block;width:100%;margin:10px 0 6px;position:relative;z-index:1;color:var(--red)">Sluit alle posities</button>
     <div id="ac-pos" class="plist"></div>
-    <button type="button" class="btn-grey hidden" id="ac-closeall" style="display:block;width:100%;margin-top:10px;color:var(--red)">Sluit alle posities</button>
 
     <div class="card koppel" id="ph-card">
       <div class="k-t">Phantom-wallet</div>
@@ -255,6 +255,6 @@
     </div>
   </section>
 </div>
-<script src="app.js?v=47"></script>
+<script src="app.js?v=48"></script>
 </body>
 </html>
