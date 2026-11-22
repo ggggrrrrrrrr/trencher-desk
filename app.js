@@ -18,6 +18,30 @@
     if (Math.abs(Number(j.book.start_usd) - p.base) > 0.005) { try { localStorage.removeItem(MOVE_KEY); } catch (e) {} return j; }
     return Object.assign({}, j, { balance: Number(j.balance) + p.d, cash: Math.max(0, Number(j.cash) + p.d), book: Object.assign({}, j.book, { start_usd: p.base + p.d }), move_pending: p.d });
   }
+  /* v46: direct app actions via the desk tunnel with the separate app key (never APP_TOKEN; nothing in static files). */
+  const APPKEY_KEY = "desk_app_key", DEMO_PEND_KEY = "desk_demo_pend";
+  function savePair(v) { let k = ""; try { k = decodeURIComponent(v || ""); } catch (e) { k = v || ""; } if (!/^[A-Za-z0-9_-]{32,128}$/.test(k)) return false; try { localStorage.setItem(APPKEY_KEY, k); } catch (e) { return false; } savePair.just = true; return true; }
+  function appKey() { try { return localStorage.getItem(APPKEY_KEY) || ""; } catch (e) { return ""; } }
+  function actUrl() { const u = RAW && RAW.action_url; return typeof u === "string" && /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(u) ? u : ""; }
+  function canAct() { return !!(appKey() && actUrl()); }
+  async function act(path, body, ms) {
+    const ctl = "AbortController" in window ? new AbortController() : null, to = ctl ? setTimeout(() => ctl.abort(), ms || 20000) : 0;
+    try {
+      const r = await fetch(actUrl() + path, { method: "POST", mode: "cors", cache: "no-store", headers: { "Content-Type": "application/json", "X-App-Key": appKey() }, body: JSON.stringify(body || {}), signal: ctl ? ctl.signal : undefined });
+      let j = null; try { j = await r.json(); } catch (e) {}
+      if (r.status === 401) { try { localStorage.removeItem(APPKEY_KEY); } catch (e) {} renderAppKey(); return { ok: false, status: 401, why: "App-sleutel ongeldig of ingetrokken. Stuur 'app koppel' in Telegram." }; }
+      if (!r.ok) return { ok: false, status: r.status, why: (j && j.detail) || ("fout " + r.status) };
+      return { ok: true, data: j || {} };
+    } catch (e) { return { ok: false, status: 0, net: true, why: e.name === "AbortError" ? "geen antwoord van de desk (timeout)" : "desk niet bereikbaar" }; }
+    finally { clearTimeout(to); }
+  }
+  function demoPend() { try { const p = JSON.parse(localStorage.getItem(DEMO_PEND_KEY) || "null"); if (!p || Date.now() - p.t > 4 * 60e3) return null; return p; } catch (e) { return null; } }
+  function demoOn() { const snap = !!(RAW && RAW.demo_enabled), p = demoPend(); if (p && p.on !== snap) return p.on; if (p) { try { localStorage.removeItem(DEMO_PEND_KEY); } catch (e) {} } return snap; }
+  function renderAppKey() {
+    const st = $("ak-state"); if (!st) return; const k = !!appKey(), u = !!actUrl();
+    st.textContent = k ? (u ? "Gekoppeld · acties gaan direct" : "Gekoppeld · desk-tunnel nu niet bereikbaar (valt terug op Telegram)") : "Niet gekoppeld · acties via Telegram";
+    st.className = k && u ? "k-on" : "k-on warn"; const f = $("ak-forget"); if (f) f.classList.toggle("hidden", !k);
+  }
   function viewOf(j) { if (!j) return j; if (book() !== "live" || !j.live_book) return withMove(j); const L = j.live_book; return Object.assign({}, j, L, { sim: false, live: true, tracked: j.tracked, top_n: j.top_n, public_n: j.public_n, leaders: j.leaders, watch: j.watch, last_watch: j.last_watch, tokens: j.tokens, agents: j.agents, delay_s: j.delay_s, pending: j.pending }); }
   function setBook(b) { try { localStorage.setItem(BOOK_KEY, b); } catch (e) {} if (RAW) { S = viewOf(RAW); } renderBookUI(); renderAll(); }
   const SOLSCAN = "https://solscan.io/tx/";
@@ -35,7 +59,7 @@
   function extractDataPath(raw) { const s = String(raw || "").trim(); const m = s.match(/(?:^|[?#&])d=([^&#\s]+)/); if (m && m[1]) { try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; } } return /^[A-Za-z0-9_-]{32,}$/.test(s) ? s : ""; }
   function captureFromHash() {
     const all = (location.hash.replace(/^#/, "") + "&" + location.search.replace(/^\?/, "")).split("&").filter(Boolean);
-    for (const p of all) { if (p.startsWith("d=")) { try { localStorage.setItem(DATA_KEY, decodeURIComponent(p.slice(2))); } catch (e) {} } else if (p.startsWith("k=") || p.startsWith("b=")) savePushParams("#" + p); }
+    for (const p of all) { if (p.startsWith("d=")) { try { localStorage.setItem(DATA_KEY, decodeURIComponent(p.slice(2))); } catch (e) {} } else if (p.startsWith("k=") || p.startsWith("b=")) savePushParams("#" + p); else if (p.startsWith("pair=")) savePair(p.slice(5)); }
     if (location.hash) history.replaceState(null, "", location.pathname + location.search);
   }
   function dataPath() { try { return localStorage.getItem(DATA_KEY) || ""; } catch (e) { return ""; } }
@@ -359,7 +383,7 @@
 
   /* ---------- ACTIVITY / ACCOUNT ---------- */
   function renderActivity() { $("a-sub").textContent = "tonight · copying " + S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + " · " + behind(); setH("a-feed").v = feedHtml(S.activity, feedF, "act"); }
-  function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = isLive() ? "max " + r.ticket_pct + "% van saldo · max " + r.max_open + " open · min $" + (r.min_trade_usd || 2) + " · " + (r.sol_reserve || 0.02) + " SOL reserve" : r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = (isLive() && r.exit_text) ? r.exit_text : (isLive() ? "noodstop −" : "−") + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · verkoopt als trader verkoopt" + (isLive() && RAW.live_book ? " · stopt alles bij −$" + Number(RAW.live_book.loss_limit || 12.5).toFixed(2) : ""); renderPhantom(); renderDemo(); renderProfile(); }
+  function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = isLive() ? "max " + r.ticket_pct + "% van saldo · max " + r.max_open + " open · min $" + (r.min_trade_usd || 2) + " · " + (r.sol_reserve || 0.02) + " SOL reserve" : r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = (isLive() && r.exit_text) ? r.exit_text : (isLive() ? "noodstop −" : "−") + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · verkoopt als trader verkoopt" + (isLive() && RAW.live_book ? " · stopt alles bij −$" + Number(RAW.live_book.loss_limit || 12.5).toFixed(2) : ""); renderPhantom(); renderDemo(); renderAppKey(); renderProfile(); }
   /* v41: profile header, range chart, cash card and positions (all from the book on screen) */
   function acSpan(r) { return { "24h": 86400e3, "7d": 7 * 86400e3, "30d": 30 * 86400e3 }[r] || Infinity; }
   function renderProfile() {
@@ -405,18 +429,37 @@
       ? n + " echte positie(s) worden verkocht voor SOL (exacte wallet-saldi, alleen swaps via Phantom). De koop-schakelaar verandert niet. Bevestig daarna met Start in Telegram; de bot stuurt wat er verkocht is en de PnL."
       : n + " demo-positie(s) worden gesloten tegen de huidige prijs. ECHT GELD verandert niet. Bevestig daarna met Start in Telegram; de bot stuurt de PnL.";
     const go = $("cl-go");
+    if (canAct()) {
+      $("cl-text").textContent = live ? n + " echte positie(s) worden nu verkocht voor SOL (exacte wallet-saldi, alleen swaps via Phantom). Kopen blijft zoals het staat." : n + " demo-positie(s) worden nu gesloten tegen de huidige prijs. ECHT GELD verandert niet.";
+      go.removeAttribute("href"); go.removeAttribute("target");
+      go.onclick = (ev) => { ev.preventDefault(); closeAllDirect(live); };
+      openSheet("sh-close"); return;
+    }
+    go.setAttribute("target", "_blank");
     if (bot) go.href = "https://t.me/" + bot + "?start=" + cmd; else go.removeAttribute("href");
     go.onclick = () => { setTimeout(closeSheets, 200); toast(bot ? "Tik in Telegram op Start" : "Stuur in Telegram", bot ? "Daarna worden alle " + (live ? "echte" : "demo") + " posities gesloten." : "sluit alles " + (live ? "live" : "demo")); };
     openSheet("sh-close");
   }
+  async function closeAllDirect(live) {
+    if (closeAllDirect.busy) return; closeAllDirect.busy = true; closeSheets();
+    toast("Bezig met sluiten…", live ? "Echte posities worden verkocht via Phantom" : "Demo-posities worden gesloten");
+    const r = await act("/api/app/close_all", { book: live ? "live" : "demo", confirm: true }, 120000); closeAllDirect.busy = false;
+    if (!r.ok) { toast("Sluit alles niet gelukt", r.why + (r.net ? " · check Telegram voor de uitslag" : "")); return; }
+    const d = r.data;
+    if (d.pending) { toast("Sluiten loopt nog", "De uitslag komt in Telegram en hier binnen ~1 minuut."); return; }
+    const nd = (d.done || []).length, nf = (d.failed || []).length;
+    toast(nd || nf ? nd + " gesloten" + (nf ? ", " + nf + " mislukt" : "") + " · PnL " + (d.pnl >= 0 ? "+" : "-") + money(Math.abs(d.pnl)) : "Geen open posities", (live ? "ECHT GELD" : "Demo") + (nf ? " · probeer de rest opnieuw" : "") + " · details in Telegram");
+    setTimeout(refresh, 4000);
+  }
   function renderDemo() {
     const st = $("demo-state"), btn = $("demo-btn"), hint = $("demo-hint"); if (!st || !btn) return;
-    const on = !!(RAW && RAW.demo_enabled);
+    const on = demoOn();
     st.textContent = on ? "AAN · kopieert met nepgeld, geen meldingen" : "UIT · alleen geschiedenis";
     st.className = on ? "k-on" : "";
     const bot = (RAW && RAW.bot) || botName();
     btn.textContent = on ? "Demo uitzetten" : "Demo aanzetten";
-    if (bot) { btn.href = "https://t.me/" + bot + "?start=" + (on ? "demo_off" : "demo_on"); btn.classList.remove("hidden"); hint.textContent = "Na Start in Telegram ververst de status hier binnen ~1 minuut."; }
+    if (canAct()) { btn.removeAttribute("href"); btn.removeAttribute("target"); hint.textContent = "Werkt direct (app-sleutel). ECHT GELD verandert niet."; return; }
+    if (bot) { btn.setAttribute("target", "_blank"); btn.href = "https://t.me/" + bot + "?start=" + (on ? "demo_off" : "demo_on"); btn.classList.remove("hidden"); hint.textContent = "Na Start in Telegram ververst de status hier binnen ~1 minuut."; }
     else { btn.removeAttribute("href"); hint.textContent = "Stuur in Telegram: demo " + (on ? "uit" : "aan"); }
   }
   function renderPhantom() {
@@ -534,11 +577,29 @@
   function sendMove(k) {
     let n = Math.round(Number(PADV[k]) * 100) / 100; if (!(n > 0) || !S || isLive()) return;
     if (k === "wd") n = Math.min(n, Math.max(0, Math.floor(Number(S.cash || 0) * 100) / 100)); if (!(n > 0)) { toast("Niets vrij om op te nemen", "Geld in open posities blijft staan."); return; }
+    if (canAct()) { sendMoveDirect(k, n); return; }
     const d = k === "dep" ? n : -n, bot = (RAW && RAW.bot) || botName(), cmd = (k === "dep" ? "demo_dep_" : "demo_wd_") + String(n).replace(".", "_");
     try { localStorage.setItem(MOVE_KEY, JSON.stringify({ d: d, base: Number(RAW.book.start_usd), t: Date.now() })); if (k === "dep") localStorage.setItem(START_KEY, "1"); } catch (e) {}
     if (bot) window.open("https://t.me/" + bot + "?start=" + cmd, "_blank", "noopener");
     closeSheets(); S = viewOf(RAW); renderAll();
     toast((k === "dep" ? "Gestort: +" : "Opgenomen: -") + money(n) + " (demo)", bot ? "Tik in Telegram op Start om te bevestigen · ECHT GELD verandert niet" : "Stuur in Telegram: demo " + (k === "dep" ? "storten " : "opnemen ") + n);
+  }
+  async function sendMoveDirect(k, n) {
+    const go = $(k + "-go"); if (go.disabled && sendMoveDirect.busy) return; sendMoveDirect.busy = true; go.disabled = true; go.textContent = "Bezig…";
+    const base = Number(RAW.book.start_usd), r = await act("/api/app/demo/move", { amount: k === "dep" ? n : -n });
+    sendMoveDirect.busy = false; padShow(k);
+    if (!r.ok) { toast("Niet gelukt", r.why + (r.net ? " · probeer opnieuw of gebruik Telegram" : "")); return; }
+    const a = Number(r.data.amount) || 0;
+    try { localStorage.setItem(MOVE_KEY, JSON.stringify({ d: a, base: base, t: Date.now() })); if (a > 0) localStorage.setItem(START_KEY, "1"); } catch (e) {}
+    closeSheets(); S = viewOf(RAW); renderAll();
+    toast((a > 0 ? "Gestort: +" : "Opgenomen: -") + money(Math.abs(a)) + " (demo)", "Nieuw demo-saldo " + money(r.data.equity) + " · vrij " + money(r.data.cash) + " · ECHT GELD verandert niet");
+  }
+  async function toggleDemoDirect() {
+    if (toggleDemoDirect.busy) return; toggleDemoDirect.busy = true; const want = !demoOn(), btn = $("demo-btn"); btn.textContent = "Bezig…";
+    const r = await act("/api/app/demo/enabled", { on: want }); toggleDemoDirect.busy = false;
+    if (!r.ok) { renderDemo(); toast("Niet gelukt", r.why); return; }
+    try { localStorage.setItem(DEMO_PEND_KEY, JSON.stringify({ on: !!r.data.demo_enabled, t: Date.now() })); } catch (e) {}
+    renderDemo(); toast("Demo staat nu " + (r.data.demo_enabled ? "AAN" : "UIT"), "ECHT GELD verandert niet.");
   }
   function openDeposit() { PADV.dep = ""; padShow("dep"); openSheet("sh-dep"); }
   function openWithdraw() { PADV.wd = ""; padShow("wd"); const n = (S.open || []).length; $("wd-pos").textContent = n ? n + " open" : "all closed ✓"; $("wd-note").textContent = "Vrij: " + money(S.cash) + " · geld in open posities blijft staan · nooit onder $0."; openSheet("sh-wd"); }
@@ -617,6 +678,9 @@
     $("dep-pad").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) padKey("dep", b.textContent); });
     $("dep-go").addEventListener("click", () => sendMove("dep"));
     $("ac-closeall").addEventListener("click", openCloseAll);
+    $("demo-btn").addEventListener("click", (ev) => { if (canAct()) { ev.preventDefault(); toggleDemoDirect(); } });
+    $("ak-save").addEventListener("click", () => { const v = $("ak-link").value.trim(), m = v.match(/(?:^|[#&?])pair=([^&#\s]+)/); if (!savePair(m ? m[1] : v)) { toast("Dat is geen koppel-link", "Plak de link uit Telegram (met #pair=)."); return; } $("ak-link").value = ""; renderAppKey(); renderDemo(); toast("App gekoppeld", "Storten, opnemen, demo aan/uit en sluit alles werken nu direct."); });
+    $("ak-forget").addEventListener("click", () => { try { localStorage.removeItem(APPKEY_KEY); } catch (e) {} renderAppKey(); renderDemo(); toast("App-sleutel vergeten op dit toestel", "Intrekken voor alle toestellen: stuur 'app intrekken' in Telegram."); });
     seg($("booksw"), "data-b", (b) => setBook(b));
     document.addEventListener("click", (ev) => { const a = ev.target.closest("[data-ag]"); if (a) { agentInfo(a.getAttribute("data-ag")); return; } const t = ev.target.closest("[data-mint]"); if (t && !ev.target.closest("a")) openToken(t.getAttribute("data-mint")); });
     $("c-send").addEventListener("click", sendChat); $("c-in").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
@@ -676,6 +740,7 @@
   function schedule() { clearTimeout(pollT); if (document.hidden) return; pollT = setTimeout(async () => { await refresh(); schedule(); }, POLL_MS); }
   function wake() { if (document.hidden) { clearTimeout(pollT); return; } refresh().then(schedule); refreshTokens(); }
   captureFromHash(); wire(); wirePush(); wireScrub();
+  if (savePair.just) setTimeout(() => toast("App gekoppeld", "Acties gaan nu direct naar de desk (geen Telegram-bevestiging)."), 600);
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register(new URL("sw.js?v=42", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
     let rl = false; const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener("controllerchange", () => { if (rl || !had) return; rl = true; location.reload(); });
