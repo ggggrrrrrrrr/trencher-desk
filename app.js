@@ -394,6 +394,23 @@
     btn.textContent = on ? "Demo uitzetten" : "Demo aanzetten";
     if (bot) { btn.href = "https://t.me/" + bot + "?start=" + (on ? "demo_off" : "demo_on"); btn.classList.remove("hidden"); hint.textContent = "Na Start in Telegram ververst de status hier binnen ~1 minuut."; }
     else { btn.removeAttribute("href"); hint.textContent = "Stuur in Telegram: demo " + (on ? "uit" : "aan"); }
+    renderDemoSaldo(bot);
+  }
+  function renderDemoSaldo(bot) {
+    const b = $("demo-bal"), inp = $("demo-amt"), go = $("demo-amt-go"), h = $("demo-amt-hint"); if (!b || !inp || !go) return;
+    const start = RAW && RAW.book ? RAW.book.start_usd : null;
+    b.textContent = RAW && RAW.balance != null ? money(RAW.balance) + (start != null ? " (start " + money(start, 0) + ")" : "") : "—";
+    const upd = () => {
+      const v = Number(String(inp.value || "").replace(",", "."));
+      const ok = isFinite(v) && v >= 10 && v <= 100000;
+      const amt = ok ? String(Math.round(v * 100) / 100).replace(".", "_") : "";
+      go.classList.toggle("dis", !ok);
+      if (ok && bot) go.href = "https://t.me/" + bot + "?start=demo_saldo_" + amt; else go.removeAttribute("href");
+      if (h) h.textContent = ok ? (bot ? "Opent de desk-bot in Telegram; tik daar op Start." : "Stuur in Telegram: demo saldo " + v)
+                               : "Kies een bedrag tussen $10 en $100.000. Het oude demo-boek blijft in de geschiedenis; ECHT GELD verandert niet.";
+    };
+    if (!inp.dataset.w) { inp.dataset.w = "1"; inp.addEventListener("input", upd); go.addEventListener("click", (e) => { if (!go.getAttribute("href")) e.preventDefault(); }); }
+    upd();
   }
   function renderPhantom() {
     const L = RAW && RAW.live_book; const st = $("ph-status"); if (!st) return;
