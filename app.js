@@ -717,6 +717,9 @@
   }
   const SNAP_KEY = "cd_last_app", POLL_MS = 5000;
   function useSnapshot(j, cached) {
+    if (j && j.bot) { try { localStorage.setItem(BOT_KEY, j.bot); } catch (e) {} } else if (j && !j.bot && botName()) j = Object.assign({}, j, { bot: botName() });  // bot name blank ~1 min after a desk restart
+    if (j && !j.action_url && actUrl.last && Date.now() - actUrl.lastT < 3 * 60e3) j = Object.assign({}, j, { action_url: actUrl.last });
+    if (j && j.action_url) { actUrl.last = j.action_url; actUrl.lastT = Date.now(); }
     RAW = j; S = viewOf(j); renderBookUI(); const age = (Date.now() - Date.parse(S.updatedAt || "")) / 1000; const b = $("error");
     if (!cached && isFinite(age) && age > 15 * 60) { b.textContent = "Gegevens zijn " + Math.round(age / 60) + " min oud. De watchdog herstart de desk."; b.classList.remove("hidden"); } else b.classList.add("hidden");
     renderAll();
