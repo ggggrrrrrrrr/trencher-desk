@@ -291,12 +291,12 @@
     svg.innerHTML = g;
     const pc = (x, y) => "left:" + (x / W * 100).toFixed(1) + "%;top:" + (y / H * 100).toFixed(1) + "%";
     let L = "";
-    L += '<span class="c-lab blue" style="' + pc(X(t1), Y(e)) + '">Grok Bot +' + (p.lag_s != null ? p.lag_s : S.delay_s) + "s</span>";
+    L += '<span class="c-lab blue" style="' + pc(Math.max(W * 0.24, X(t1)), Y(e) - 26) + '">Grok Bot +' + (p.lag_s != null ? p.lag_s : S.delay_s) + "s</span>";
     L += '<span class="c-lab blue" style="' + pc(W - 52, Y(e) + 24) + '">entry ' + esc(lab(e)) + "</span>";
     L += '<span class="c-lab green left" style="' + pc(6, Y(lines[0].px) + 20) + '">' + esc(lines[0].t) + "</span>";
     L += '<span class="c-lab green left" style="' + pc(6, Y(lines[1].px) + 20) + '">' + esc(lines[1].t) + "</span>";
-    L += '<span class="c-lab red left" style="' + pc(6, Y(lines[2].px) + 20) + '">' + esc(lines[2].t) + "</span>";
-    if (p.leader_entry_usd) L += '<span style="position:absolute;' + pc(Math.max(24, X(tL)), Math.max(8, Y(p.leader_entry_usd) - 46)) + ';transform:translate(-50%,0);text-align:center;font-size:11px;color:#fff;font-weight:600">' + av(p.leader, "xs") + "<br>" + esc(p.leader) + "</span>";
+    L += '<span class="c-lab red left" style="' + pc(W * 0.3, Y(lines[2].px) + 20) + '">' + esc(lines[2].t) + "</span>";
+    if (p.leader_entry_usd) L += '<span style="position:absolute;' + pc(Math.max(24, X(tL)), Math.min(H - VH - 40, Y(p.leader_entry_usd) + 10)) + ';transform:translate(-50%,0);text-align:center;font-size:11px;color:#fff;font-weight:600">' + av(p.leader, "xs") + "<br>" + esc(p.leader) + "</span>";
     if (!real) L += '<span style="position:absolute;left:8px;bottom:6px;font-size:11px;color:#6e6e73">koersdata (GeckoTerminal) niet beschikbaar · lijn tussen echte punten</span>';
     $("p-labels").innerHTML = L;
   }
