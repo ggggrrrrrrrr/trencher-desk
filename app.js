@@ -121,7 +121,7 @@
   let FX = 1.09;
   const eur = (v) => v / (FX > 0 ? FX : 1.09);
   function money(v, d) { v = num(v); if (v == null) return "€—"; v = eur(v); const dd = d != null ? d : 2; return (v < 0 ? "-€" : "€") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: dd, maximumFractionDigits: dd }); }
-  function txtEur(t) { return String(t == null ? "" : t).replace(/([+\-−]?)\$(\d[\d,]*(?:\.\d+)?)([kKMB]?)/g, (m, sg, n, k) => { const x = eur(Number(n.replace(/,/g, ""))); const dec = (n.split(".")[1] || "").length; return sg + "€" + (dec ? x.toFixed(dec) : (k ? x.toFixed(1) : Math.round(x).toLocaleString("en-US"))) + k; }); }
+  function txtEur(t) { return String(t == null ? "" : t).replace(/([+\-−]?)\$([+\-]?)(\d[\d,]*(?:\.\d+)?)([kKMB]?)/g, (m, sg, sg2, n, k) => { const x = eur(Number(n.replace(/,/g, ""))); const dec = (n.split(".")[1] || "").length; return sg + sg2 + "€" + (dec ? x.toFixed(dec) : (k ? x.toFixed(1) : Math.round(x).toLocaleString("en-US"))) + k; }); }
   function sMoney(v) { v = num(v); if (v == null) return "—"; return (v >= 0 ? "+" : "-") + money(Math.abs(v)); }
   function pct(v, d) { v = num(v); if (v == null) return "—"; return (v >= 0 ? "+" : "") + v.toFixed(d == null ? 1 : d) + "%"; }
   function cls(v) { v = num(v); return v == null || v === 0 ? "" : v > 0 ? "g" : "r"; }
