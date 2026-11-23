@@ -335,20 +335,43 @@
     const n = (S.open || []).length; return n ? { k: "holding", t: "houdt " + n + " positie" + (n === 1 ? "" : "s") + " vast" } : { k: "idle", t: "idle" };
   }
   function tsTime(iso) { const t = Date.parse(iso || ""); return isFinite(t) ? new Date(t).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: TZ }) : "--:--:--"; }
+  /* v50 live screen: desk feed (feed.json, newest first). Display only. */
+  let FEED = null, FEED_F = "all", FEED_TOP = 0;
+  const FK = { watch: ["trader", "#5AC8FA"], check: ["check", "#8E8EFF"], skip: ["skip", "#FF9F0A"], copy: ["koop", "#00D26A"], sell: ["verkoop", "#34E89E"], info: ["desk", "#E5E5E5"] };
+  async function refreshFeed() {
+    if (!dataPath() || refreshFeed.busy) return; refreshFeed.busy = true;
+    try { const r = await fetch(dataUrl("feed.json"), { cache: "no-store" }); if (r.ok) { const j = await r.json(); if (j && Array.isArray(j.rows)) { FEED = j; if (S) renderLiveScreen(); } } } catch (e) {}
+    finally { refreshFeed.busy = false; }
+  }
+  function seenState() {
+    const t = Date.parse((FEED && FEED.updatedAt) || (S && S.updatedAt) || ""); if (!isFinite(t)) return { k: "off", s: null };
+    const s = Math.max(0, (Date.now() - t) / 1000); return { k: s < 150 ? "on" : s < 420 ? "slow" : "off", s: s };
+  }
+  function agoLong(s) { return s < 60 ? Math.round(s) + " s" : s < 3600 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " uur"; }
+  function feedLine(e, isNew) {
+    const k = FK[e.k] || FK.info, sym = e.sym || (e.mint && TOK[e.mint] && TOK[e.mint].sym) || "";
+    let txt = esc(txtEur(e.t || ""));
+    if (e.k === "watch" && sym && e.mint) txt = txt.replace(esc(e.mint.slice(0, 4) + "…"), esc(sym));
+    if (e.k === "watch" && sym && !txt.includes(esc(sym))) txt += " · " + esc(sym);
+    if (e.k === "sell" && num(e.pnl) != null) txt = txt.replace(/PnL ([+\-]?€[\d.,]+)/, '<span class="' + cls(e.pnl) + '">PnL $1</span>');
+    return '<div class="ln' + (isNew ? " new" : "") + (e.k === "info" && /sliep/.test(e.t || "") ? " sleep" : "") + '"><span class="t">' + tsTime(e.ts) + '</span><span class="tg" style="color:' + k[1] + '">' + k[0] + '</span><span class="lx">' + txt + "</span></div>";
+  }
   function renderLiveScreen() {
-    const lines = [];
-    for (const w of (S.watch || []).slice(0, 10)) { const t = TOK[w.mint]; lines.push({ ts: w.ts, tag: "watcher", c: "#5AC8FA", txt: esc(w.leader) + " " + (w.value === "buy" ? "kocht" : "verkocht") + " " + esc((t && t.sym) || (w.symbol && !/…$/.test(w.symbol) ? w.symbol : short(w.mint))) }); }
-    for (const a of (S.activity || []).slice(0, 10)) {
-      if (a.kind === "copies") lines.push({ ts: a.ts, tag: "executor", c: "#BF5AF2", txt: "buy " + esc(symOf(a)) + " " + money(a.size) + (a.lag != null ? " · +" + a.lag + "s" : "") + (a.tx ? " ✓" : "") });
-      else if (a.kind === "exits") lines.push({ ts: a.ts, tag: "executor", c: "#BF5AF2", txt: "sell " + esc(symOf(a)) + ' <span class="' + cls(a.gain) + '">' + sMoney(a.gain) + " (" + pct(a.pct) + ")</span> · " + esc(exitName(a.reason)) });
-      else lines.push({ ts: a.ts, tag: "risk", c: "#FF6B81", txt: esc(txtEur(String(a.text || "")).slice(0, 70)) });
-    }
-    lines.sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts));
-    const tail = lines.slice(-7);
     const es = execState();
     const ex = $("ls-exec"); ex.textContent = "Executor · " + es.k; ex.className = "ls-exec " + es.k;
-    setH("ls-feed").v = (tail.length ? tail.map((l) => '<div class="ln"><span class="t">' + tsTime(l.ts) + '</span><span class="tg" style="color:' + l.c + '">' + l.tag + '</span><span class="lx">' + l.txt + "</span></div>").join("") : '<div class="ln"><span class="lx mut">wachten op het eerste signaal…</span></div>') +
-      '<div class="ln cur"><span class="t">' + tsTime(S.updatedAt) + '</span><span class="tg" style="color:#00D26A">desk</span><span class="lx">watching ' + S.tracked + " wallets · " + (S.open || []).length + " open<i class=\"caret2\"></i></span></div>";
+    const ss = seenState(), lv = $("ls-live"); if (lv) lv.className = "ls-live " + ss.k;
+    const lt = $("ls-live-t"); if (lt) lt.textContent = ss.k === "on" ? "LIVE" : ss.k === "slow" ? "VERTRAAGD" : "SLAAPT";
+    const seenTxt = ss.s == null ? "desk nog niet gezien" : "desk laatst gezien " + agoLong(ss.s) + " geleden" + (ss.k === "off" ? " · computer slaapt of is offline, er wordt nu niets gekopieerd" : ss.k === "slow" ? " · updates lopen achter" : "");
+    const sn = $("ls-seen"); if (sn) sn.textContent = ss.s == null ? "desk-computer" : "gezien " + agoLong(ss.s) + " geleden";
+    const rows = (FEED && FEED.rows) || [];
+    const keep = (e) => FEED_F === "all" || (FEED_F === "trades" ? (e.k === "copy" || e.k === "sell" || e.k === "watch") : e.k === FEED_F);
+    const list = rows.filter(keep).slice(0, 200);
+    const top = rows.length ? rows[0].n || 0 : 0, prevTop = FEED_TOP; FEED_TOP = top;
+    const box = $("ls-feed"), atTop = !box || box.scrollTop < 8;
+    setH("ls-feed").v = '<div class="seen ' + ss.k + '">' + esc(seenTxt) + "</div>" +
+      '<div class="ln cur"><span class="t">' + tsTime((FEED && FEED.updatedAt) || S.updatedAt) + '</span><span class="tg" style="color:#00D26A">desk</span><span class="lx">volgt ' + S.tracked + " wallets · " + (S.open || []).length + " open<i class=\"caret2\"></i></span></div>" +
+      (list.length ? list.map((e) => feedLine(e, prevTop && (e.n || 0) > prevTop)).join("") : '<div class="ln"><span class="lx mut">' + (FEED ? "nog niets in dit filter…" : "live feed laden…") + "</span></div>");
+    if (box && atTop) box.scrollTop = 0;
     const a = (S.activity || []).find((x) => x.kind === "copies" || x.kind === "exits");
     setH("ls-foot").v = a ? '<span class="lf-t">' + (a.kind === "copies" ? "Bought " + esc(symOf(a)) + " · " + money(a.size) : "Sold " + esc(symOf(a)) + ' · <span class="' + cls(a.gain) + '">' + sMoney(a.gain) + "</span>") + ' <span class="mut">· ' + ago(a.ts) + ' geleden</span></span><span class="lf-ok" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9" fill="none" stroke="#000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' : '<span class="mut">Nog geen trade</span>';
   }
@@ -748,6 +771,9 @@
   function schedule() { clearTimeout(pollT); if (document.hidden) return; pollT = setTimeout(async () => { await refresh(); schedule(); }, POLL_MS); }
   function wake() { if (document.hidden) { clearTimeout(pollT); return; } refresh().then(schedule); refreshTokens(); }
   captureFromHash(); wire(); wirePush(); wireScrub();
+  { const f = $("ls-filt"); if (f) f.addEventListener("click", (ev) => { const b = ev.target.closest("button[data-f]"); if (!b) return; FEED_F = b.dataset.f; for (const x of f.querySelectorAll("button")) x.classList.toggle("on", x === b); if (S) renderLiveScreen(); }); }
+  refreshFeed(); setInterval(() => { if (!document.hidden) refreshFeed(); }, 10000);
+  setInterval(() => { if (!document.hidden && S) renderLiveScreen(); }, 5000);
   if (savePair.just) setTimeout(() => toast("App gekoppeld", "Acties gaan nu direct naar de desk (geen Telegram-bevestiging)."), 600);
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register(new URL("sw.js?v=42", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});
