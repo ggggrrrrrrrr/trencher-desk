@@ -335,22 +335,72 @@
     const n = (S.open || []).length; return n ? { k: "holding", t: "houdt " + n + " positie" + (n === 1 ? "" : "s") + " vast" } : { k: "idle", t: "idle" };
   }
   function tsTime(iso) { const t = Date.parse(iso || ""); return isFinite(t) ? new Date(t).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: TZ }) : "--:--:--"; }
-  function renderLiveScreen() {
-    const lines = [];
-    for (const w of (S.watch || []).slice(0, 10)) { const t = TOK[w.mint]; lines.push({ ts: w.ts, tag: "watcher", c: "#5AC8FA", txt: esc(w.leader) + " " + (w.value === "buy" ? "kocht" : "verkocht") + " " + esc((t && t.sym) || (w.symbol && !/…$/.test(w.symbol) ? w.symbol : short(w.mint))) }); }
-    for (const a of (S.activity || []).slice(0, 10)) {
-      if (a.kind === "copies") lines.push({ ts: a.ts, tag: "executor", c: "#BF5AF2", txt: "buy " + esc(symOf(a)) + " " + money(a.size) + (a.lag != null ? " · +" + a.lag + "s" : "") + (a.tx ? " ✓" : "") });
-      else if (a.kind === "exits") lines.push({ ts: a.ts, tag: "executor", c: "#BF5AF2", txt: "sell " + esc(symOf(a)) + ' <span class="' + cls(a.gain) + '">' + sMoney(a.gain) + " (" + pct(a.pct) + ")</span> · " + esc(exitName(a.reason)) });
-      else lines.push({ ts: a.ts, tag: "risk", c: "#FF6B81", txt: esc(txtEur(String(a.text || "")).slice(0, 70)) });
+  /* v50 live scherm: renders what the desk is doing from REAL events (feed.json, newest first). No fake footage. */
+  let FEED = null, FEED_TOP = 0;
+  async function refreshFeed() {
+    if (!dataPath() || refreshFeed.busy) return; refreshFeed.busy = true;
+    try { const r = await fetch(dataUrl("feed.json"), { cache: "no-store" }); if (r.ok) { const j = await r.json(); if (j && Array.isArray(j.rows)) { FEED = j; if (S) renderLiveScreen(); } } } catch (e) {}
+    finally { refreshFeed.busy = false; }
+  }
+  function seenState() {
+    const t = Date.parse((FEED && FEED.updatedAt) || (S && S.updatedAt) || ""); if (!isFinite(t)) return { k: "off", s: null, t: null };
+    const s = Math.max(0, (Date.now() - t) / 1000); return { k: s < 240 ? "on" : "off", s: s, t: t };
+  }
+  function hm(t) { return new Date(t).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ }); }
+  function evSym(e) { return e.sym || (e.mint && TOK[e.mint] && TOK[e.mint].sym) || (e.mint ? short(e.mint) : ""); }
+  function evCls(e) { return e.k === "copy" ? "ok" : e.k === "sell" ? (num(e.pnl) != null && e.pnl < 0 ? "bad" : "ok") : e.k === "skip" ? "bad" : e.k === "watch" ? "seen" : e.k === "check" ? "" : "inf"; }
+  function evText(e) {
+    let t = txtEur(e.t || ""); const sym = evSym(e);
+    if (e.k === "watch" && e.mint) { t = t.replace(e.mint.slice(0, 4) + "…", sym); if (sym && t.indexOf(sym) < 0) t += " · " + sym; }
+    if (e.k === "skip" && sym && t.indexOf(sym) < 0) t = t.replace("Overgeslagen:", "Overgeslagen " + sym + ":");
+    return t;
+  }
+  function liveStatus(rows, ss) {
+    if (ss.k === "off") return { c: "sleep", t: "Watcher · pauze (computer slaapt)" };
+    const e = rows[0], age = e ? (Date.now() - Date.parse(e.ts)) / 1000 : 1e9;
+    if (e && age < 45) {
+      if (e.k === "copy") return { c: "buying", t: "Executor · coin openen" };
+      if (e.k === "sell") return { c: "selling", t: "Executor · verkopen" };
+      if (e.k === "check" || e.k === "skip") return { c: "risk", t: "Risk · checkt " + evSym(e) };
     }
-    lines.sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts));
-    const tail = lines.slice(-7);
-    const es = execState();
-    const ex = $("ls-exec"); ex.textContent = "Executor · " + es.k; ex.className = "ls-exec " + es.k;
-    setH("ls-feed").v = (tail.length ? tail.map((l) => '<div class="ln"><span class="t">' + tsTime(l.ts) + '</span><span class="tg" style="color:' + l.c + '">' + l.tag + '</span><span class="lx">' + l.txt + "</span></div>").join("") : '<div class="ln"><span class="lx mut">wachten op het eerste signaal…</span></div>') +
-      '<div class="ln cur"><span class="t">' + tsTime(S.updatedAt) + '</span><span class="tg" style="color:#00D26A">desk</span><span class="lx">watching ' + S.tracked + " wallets · " + (S.open || []).length + " open<i class=\"caret2\"></i></span></div>";
+    const n = (S.open || []).length; if (n) return { c: "holding", t: "Risk · bewaakt " + n + " positie" + (n === 1 ? "" : "s") };
+    return { c: "watch", t: "Watcher · wallets scannen" };
+  }
+  function sparkSvg(pts) {
+    if (!pts || pts.length < 2) return "";
+    const W = 120, H = 34, xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs) || x0 + 1, y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const X = (x) => ((x - x0) / Math.max(1e-9, x1 - x0)) * W, Y = (y) => y1 === y0 ? H / 2 : H - 3 - ((y - y0) / (y1 - y0)) * (H - 6);
+    const up = ys[ys.length - 1] >= ys[0], c = up ? "#00D26A" : "#FF453A";
+    const d = pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1)).join(" ");
+    return '<path d="' + d + " L" + W + " " + H + " L0 " + H + ' Z" fill="' + c + '" opacity=".10"/><path d="' + d + '" fill="none" stroke="' + c + '" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="' + X(pts[pts.length - 1][0]).toFixed(1) + '" cy="' + Y(pts[pts.length - 1][1]).toFixed(1) + '" r="2.2" fill="' + c + '"/>';
+  }
+  function renderLiveScreen() {
+    const rows = (FEED && FEED.rows) || [], ss = seenState();
+    const lv = $("ls-live"); if (lv) lv.className = "ls-live " + ss.k;
+    const lt = $("ls-live-t"); if (lt) lt.textContent = ss.k === "on" ? "Live · computer van de bot" : (ss.t ? "Laatst gezien " + hm(ss.t) + " · computer slaapt" : "Nog niet gezien");
+    const st = liveStatus(rows, ss), ex = $("ls-exec"); ex.textContent = st.t; ex.className = "ls-exec " + st.c;
+    const scr = $("ls-screen"); if (scr) scr.classList.toggle("off", ss.k === "off");
+    // focus coin: newest event about a coin
+    const f = rows.find((e) => e.mint && e.k !== "info");
+    if (f) {
+      const evs = rows.filter((e) => e.mint === f.mint).slice(0, 40), chk = evs.find((e) => e.k === "check");
+      const who = (evs.find((e) => e.who) || {}).who || "";
+      $("lsc-sym").textContent = evSym(f); $("lsc-who").textContent = who ? "van trader " + who + (chk && num(chk.lag) != null ? " · " + Math.round(chk.lag) + "s na hun koop" : "") : "";
+      const bits = []; if (chk) { if (num(chk.mcap) != null) bits.push("mcap <b>" + kfmt(chk.mcap) + "</b>"); if (num(chk.liq) != null) bits.push("liq <b>" + kfmt(chk.liq) + "</b>"); if (num(chk.age_min) != null) bits.push("leeftijd <b>" + (chk.age_min < 120 ? Math.round(chk.age_min) + "m" : (chk.age_min / 60).toFixed(1) + "u") + "</b>"); if (chk.venue) bits.push(esc(chk.venue)); }
+      const op = (S.open || []).find((p) => p.mint === f.mint); if (op && num(op.pct) != null) bits.push('nu <b class="' + cls(op.pct) + '">' + pct(op.pct) + "</b>");
+      setH("lsc-stats").v = bits.length ? bits.map((b) => "<span>" + b + "</span>").join("") : '<span class="mut">nog geen check voor deze coin</span>';
+      const has = (k) => evs.some((e) => e.k === k), sold = has("sell"), skip = f.k === "skip" || (evs[0] && evs[0].k === "skip");
+      const steps = ["gezien", "checks", "gekopieerd", "positie", "verkocht"];
+      let curI = sold ? 4 : op ? 3 : has("copy") ? 2 : (has("check") || has("skip")) ? 1 : 0;
+      setH("lsc-steps").v = steps.map((n, i) => '<span class="' + (skip && i === 1 ? "bad" : i < curI ? "done" : i === curI ? "cur" : "") + '">' + (skip && i === 1 ? "overgeslagen" : n) + "</span>").join("<i></i>");
+      setH("lsc-spark").v = sparkSvg(FEED.ticks && FEED.ticks[f.mint]);
+    } else { setH("lsc-steps").v = ["gezien", "checks", "gekopieerd", "positie", "verkocht"].map((n) => "<span>" + n + "</span>").join("<i></i>"); }
+    const top = rows.length ? rows[0].n || 0 : 0, prevTop = FEED_TOP; FEED_TOP = top;
+    const lines = rows.slice(0, 8).map((e) => '<div class="ln"><span class="t">' + tsTime(e.ts) + '</span><span class="lx ' + evCls(e) + '">' + esc(evText(e)) + "</span></div>");
+    setH("ls-feed").v = '<div class="ln cur"><span class="t">' + tsTime(ss.k === "on" ? new Date().toISOString() : (FEED && FEED.updatedAt)) + '</span><span class="lx">' + (ss.k === "on" ? "volgt " + (S.tracked || 0) + " wallets · " + (S.open || []).length + " open" : "computer slaapt · niets gezien sinds " + (ss.t ? hm(ss.t) : "—")) + '<i class="caret2"></i></span></div>' + (lines.join("") || '<div class="ln"><span class="lx inf">' + (FEED ? "wachten op het eerste signaal…" : "live scherm laden…") + "</span></div>");
     const a = (S.activity || []).find((x) => x.kind === "copies" || x.kind === "exits");
-    setH("ls-foot").v = a ? '<span class="lf-t">' + (a.kind === "copies" ? "Bought " + esc(symOf(a)) + " · " + money(a.size) : "Sold " + esc(symOf(a)) + ' · <span class="' + cls(a.gain) + '">' + sMoney(a.gain) + "</span>") + ' <span class="mut">· ' + ago(a.ts) + ' geleden</span></span><span class="lf-ok" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9" fill="none" stroke="#000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' : '<span class="mut">Nog geen trade</span>';
+    setH("ls-foot").v = a ? '<span class="lf-t">' + (a.kind === "copies" ? "Gekocht " + esc(symOf(a)) + " · " + money(a.size) : "Verkocht " + esc(symOf(a)) + ' · <span class="' + cls(a.gain) + '">' + sMoney(a.gain) + "</span>") + ' <span class="mut">· ' + (a.tx ? "geverifieerd ✓" : (isLive() ? "niet bevestigd" : "demo")) + " · " + ago(a.ts) + ' geleden</span></span>' + (a.tx ? '<span class="lf-ok" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9" fill="none" stroke="#000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' : "") : '<span class="mut">Nog geen trade</span>';
   }
   function renderLive() {
     const tr = leaders().filter((l) => l.tracked);
@@ -748,6 +798,8 @@
   function schedule() { clearTimeout(pollT); if (document.hidden) return; pollT = setTimeout(async () => { await refresh(); schedule(); }, POLL_MS); }
   function wake() { if (document.hidden) { clearTimeout(pollT); return; } refresh().then(schedule); refreshTokens(); }
   captureFromHash(); wire(); wirePush(); wireScrub();
+  refreshFeed(); setInterval(() => { if (!document.hidden) refreshFeed(); }, 10000);
+  setInterval(() => { if (!document.hidden && S) renderLiveScreen(); }, 5000);
   if (savePair.just) setTimeout(() => toast("App gekoppeld", "Acties gaan nu direct naar de desk (geen Telegram-bevestiging)."), 600);
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register(new URL("sw.js?v=42", pageBase()).href, { updateViaCache: "none" }).then((reg) => reg.update().catch(() => {})).catch(() => {});

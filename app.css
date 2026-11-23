@@ -337,3 +337,31 @@ a.tx{color:#0A84FF}
 @media (min-width:600px){.nav{max-width:430px;left:50%;transform:translateX(-50%)}}
 .cg{border:1px solid #222}.cg.act{border-color:rgba(0,210,106,.7);box-shadow:0 0 0 1px rgba(0,210,106,.15)}.cg .t .s30{border-color:#2A2A2A}.bt{color:#00D26A}.sd{color:#FF9F0A}
 .fr.rule .m b{font-size:13.5px;font-weight:600;color:#D4D4D4;line-height:1.3}.fr.rule .ic .ti{width:32px;height:32px}
+
+/* v50 live scherm: real desk events rendered as the bot's screen (feed.json) */
+.ls-live.on i{background:#00D26A;box-shadow:0 0 10px #00D26A;animation:lspulse 1.4s ease-in-out infinite}
+.ls-live.off i{background:#6b6b6b;box-shadow:none;animation:none}.ls-live.off{color:#8A8A8A}
+@keyframes lspulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.7);opacity:.4}}
+.ls-exec.risk{color:#8E8EFF;border-color:rgba(142,142,255,.5)}.ls-exec.watch{color:#5AC8FA;border-color:rgba(90,200,250,.45)}.ls-exec.sleep{color:#8A8A8A}
+.ls-screen{margin:10px;aspect-ratio:16/10;border-radius:12px;background:radial-gradient(120% 90% at 50% 0%,#0b140d 0%,#050705 70%);border:1px solid #1b2a1e;box-shadow:inset 0 0 24px rgba(0,210,106,.06),0 0 0 3px #0e0e0e;display:flex;flex-direction:column;overflow:hidden;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:#C8F7D4}
+.ls-screen.off{filter:grayscale(.85) brightness(.75)}
+.lsc-coin{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px 2px}
+.lsc-id{display:flex;flex-direction:column;min-width:0}
+.lsc-sym{font-size:17px;font-weight:800;color:#fff;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .3s}
+.lsc-who{font-size:10.5px;color:#7FA88A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lsc-spark{width:42%;height:34px;flex:none}
+.lsc-stats{display:flex;gap:10px;padding:2px 11px 6px;font-size:10.5px;color:#8FBF9B;white-space:nowrap;overflow:hidden}
+.lsc-stats b{color:#E9FFEF;font-weight:700}
+.lsc-steps{display:flex;align-items:center;gap:4px;padding:5px 11px 7px;border-bottom:1px dashed #1c2a1f}
+.lsc-steps span{flex:1;text-align:center;font-size:9.5px;padding:3px 0;border-radius:6px;background:#0f1a12;color:#4d6b55;border:1px solid #16251a;white-space:nowrap;transition:all .35s}
+.lsc-steps span.done{color:#00D26A;border-color:rgba(0,210,106,.35)}
+.lsc-steps span.cur{color:#000;background:#00D26A;border-color:#00D26A;box-shadow:0 0 10px rgba(0,210,106,.55)}
+.lsc-steps span.bad{color:#fff;background:#FF3B30;border-color:#FF3B30}
+.lsc-steps i{width:6px;height:1px;background:#1f3324;flex:none}
+.lsc-term{flex:1;min-height:0;overflow:hidden;padding:5px 11px 6px;font-size:10.5px;line-height:1.55;display:flex;flex-direction:column}
+.lsc-term .ln{display:flex;gap:7px;white-space:nowrap;overflow:hidden;animation:lsin .45s cubic-bezier(.2,.8,.2,1)}
+.lsc-term .t{color:#3f5a46;flex:none}.lsc-term .lx{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.lsc-term .ok{color:#00D26A}.lsc-term .bad{color:#FF453A}.lsc-term .inf{color:#8A8A8A}.lsc-term .seen{color:#5AC8FA}
+.lsc-term .cur .lx{color:#00D26A}
+@keyframes lsin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.caret2{display:inline-block;width:6px;height:11px;background:#00D26A;margin-left:3px;vertical-align:-2px;animation:blink 1s steps(1) infinite}
