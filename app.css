@@ -337,22 +337,3 @@ a.tx{color:#0A84FF}
 @media (min-width:600px){.nav{max-width:430px;left:50%;transform:translateX(-50%)}}
 .cg{border:1px solid #222}.cg.act{border-color:rgba(0,210,106,.7);box-shadow:0 0 0 1px rgba(0,210,106,.15)}.cg .t .s30{border-color:#2A2A2A}.bt{color:#00D26A}.sd{color:#FF9F0A}
 .fr.rule .m b{font-size:13.5px;font-weight:600;color:#D4D4D4;line-height:1.3}.fr.rule .ic .ti{width:32px;height:32px}
-
-/* v50 live screen terminal (desk feed) */
-.ls-live.on i{background:#00D26A;box-shadow:0 0 10px #00D26A;animation:lspulse 1.4s ease-in-out infinite}
-.ls-live.slow i{background:#FF9F0A;box-shadow:0 0 8px #FF9F0A;animation:lspulse 2.4s ease-in-out infinite}
-.ls-live.off i{background:#FF3B30;box-shadow:0 0 8px #FF3B30;animation:none}
-.ls-live b{font-weight:800;letter-spacing:.04em}.ls-live.on b{color:#00D26A}.ls-live.off b{color:#FF3B30}.ls-live.slow b{color:#FF9F0A}
-@keyframes lspulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.6);opacity:.45}}
-.ls-filt{display:flex;gap:6px;padding:8px 12px;background:#0C0C0C;border-bottom:1px solid #161616;overflow-x:auto}
-.ls-filt button{flex:none;font:600 11px/1 inherit;color:#8A8A8A;background:#141414;border:1px solid #242424;border-radius:999px;padding:5px 10px}
-.ls-filt button.on{color:#00D26A;border-color:rgba(0,210,106,.55);background:rgba(0,210,106,.08)}
-.ls-feed.term{max-height:340px;min-height:220px;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#050805;color:#C8F7D4;text-shadow:0 0 6px rgba(0,210,106,.18);scrollbar-width:thin}
-.ls-feed.term .ln{white-space:normal;align-items:flex-start}
-.ls-feed.term .lx{white-space:normal;overflow:visible;word-break:break-word}
-.ls-feed.term .tg{flex:0 0 64px;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.04em;padding-top:1px}
-.ls-feed.term .ln.new{background:rgba(0,210,106,.07)}
-.ls-feed.term .ln.sleep{color:#FF9F0A}
-.ls-feed.term .seen{color:#6b6b6b;font-size:10.5px;padding:2px 0 6px;border-bottom:1px dashed #1c2a1f;margin-bottom:4px}
-.ls-feed.term .seen.off{color:#FF3B30}.ls-feed.term .seen.slow{color:#FF9F0A}
-.caret2{display:inline-block;width:7px;height:12px;background:#00D26A;margin-left:4px;vertical-align:-2px;animation:blink 1s steps(1) infinite}

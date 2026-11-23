@@ -9,14 +9,14 @@
   <meta name="apple-mobile-web-app-title" content="Trencher">
   <meta name="theme-color" content="#000000">
   <title>Trencher</title>
-  <link rel="manifest" href="manifest.json?v=50">
+  <link rel="manifest" href="manifest.json?v=49">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <link rel="preload" href="app.js?v=50" as="script">
-  <link rel="stylesheet" href="app.css?v=50">
+  <link rel="preload" href="app.js?v=49" as="script">
+  <link rel="stylesheet" href="app.css?v=49">
 </head>
 <body>
 <div id="app">
@@ -50,11 +50,10 @@
       <button type="button" data-r="LIVE" class="on"><i></i>LIVE</button><button type="button" data-r="1H"><i></i>1H</button><button type="button" data-r="4H"><i></i>4H</button><button type="button" data-r="1D"><i></i>1D</button><button type="button" data-r="1W"><i></i>1W</button><button type="button" data-r="ALL"><i></i>ALL</button>
     </div>
 
-    <div class="sec-row"><h2>Live screen</h2><span class="mut sm" id="ls-seen">desk-computer</span></div>
+    <div class="sec-row"><h2>Live screen</h2><span class="mut sm">Bot's computer</span></div>
     <div class="lscreen" id="lscreen">
-      <div class="ls-top"><span class="ls-live" id="ls-live"><i></i><b id="ls-live-t">LIVE</b> · desk-computer</span><span class="ls-exec" id="ls-exec">Executor · idle</span></div>
-      <div class="ls-filt" id="ls-filt"><button type="button" data-f="all" class="on">Alles</button><button type="button" data-f="trades">Trades</button><button type="button" data-f="check">Checks</button><button type="button" data-f="skip">Overgeslagen</button></div>
-      <div class="ls-feed term num" id="ls-feed"></div>
+      <div class="ls-top"><span class="ls-live"><i></i>Live · Bot's computer</span><span class="ls-exec" id="ls-exec">Executor · idle</span></div>
+      <div class="ls-feed num" id="ls-feed"></div>
       <div class="ls-foot" id="ls-foot"><span class="mut">Nog geen actie</span></div>
     </div>
 
@@ -256,6 +255,6 @@
     </div>
   </section>
 </div>
-<script src="app.js?v=50"></script>
+<script src="app.js?v=49"></script>
 </body>
 </html>
