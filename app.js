@@ -117,14 +117,18 @@
   /* ---------- format ---------- */
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const num = (v) => (v == null || v === "" || !isFinite(Number(v))) ? null : Number(v);
-  function money(v, d) { v = num(v); if (v == null) return "$—"; const dd = d != null ? d : 2; return (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: dd, maximumFractionDigits: dd }); }
+  /* v49 (Job, Nov 23 23:25 "Doe in euros"): desk math stays USD; display converts with app.json fx.usd_per_eur (ECB, cached). */
+  let FX = 1.09;
+  const eur = (v) => v / (FX > 0 ? FX : 1.09);
+  function money(v, d) { v = num(v); if (v == null) return "€—"; v = eur(v); const dd = d != null ? d : 2; return (v < 0 ? "-€" : "€") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: dd, maximumFractionDigits: dd }); }
+  function txtEur(t) { return String(t == null ? "" : t).replace(/([+\-−]?)\$(\d[\d,]*(?:\.\d+)?)([kKMB]?)/g, (m, sg, n, k) => { const x = eur(Number(n.replace(/,/g, ""))); const dec = (n.split(".")[1] || "").length; return sg + "€" + (dec ? x.toFixed(dec) : (k ? x.toFixed(1) : Math.round(x).toLocaleString("en-US"))) + k; }); }
   function sMoney(v) { v = num(v); if (v == null) return "—"; return (v >= 0 ? "+" : "-") + money(Math.abs(v)); }
   function pct(v, d) { v = num(v); if (v == null) return "—"; return (v >= 0 ? "+" : "") + v.toFixed(d == null ? 1 : d) + "%"; }
   function cls(v) { v = num(v); return v == null || v === 0 ? "" : v > 0 ? "g" : "r"; }
-  function big(v) { v = num(v); if (v == null) return '$—<span class="dec">.——</span>'; const s = money(v); const i = s.lastIndexOf("."); return esc(s.slice(0, i)) + '<span class="dec">' + esc(s.slice(i)) + "</span>"; }
-  function kfmt(v) { v = num(v); if (v == null) return "—"; const a = Math.abs(v); if (a >= 1e9) return "$" + (v / 1e9).toFixed(2) + "B"; if (a >= 1e6) return "$" + (v / 1e6).toFixed(2) + "M"; if (a >= 1e3) return "$" + (v / 1e3).toFixed(1) + "K"; return "$" + v.toFixed(0); }
+  function big(v) { v = num(v); if (v == null) return '€—<span class="dec">.——</span>'; const s = money(v); const i = s.lastIndexOf("."); return esc(s.slice(0, i)) + '<span class="dec">' + esc(s.slice(i)) + "</span>"; }
+  function kfmt(v) { v = num(v); if (v == null) return "—"; v = eur(v); const a = Math.abs(v); if (a >= 1e9) return "€" + (v / 1e9).toFixed(2) + "B"; if (a >= 1e6) return "€" + (v / 1e6).toFixed(2) + "M"; if (a >= 1e3) return "€" + (v / 1e3).toFixed(1) + "K"; return "€" + v.toFixed(0); }
   const SUB = "₀₁₂₃₄₅₆₇₈₉";
-  function price(v) { v = num(v); if (v == null || v <= 0) return "$—"; if (v >= 1) return "$" + v.toFixed(v >= 100 ? 2 : 4); const s = v.toFixed(20); const m = s.match(/^0\.(0*)(\d{4})/); if (!m) return "$" + v.toPrecision(4); const z = m[1].length; if (z < 3) return "$" + v.toFixed(z + 4); return "$0.0" + String(z).split("").map((c) => SUB[+c]).join("") + m[2]; }
+  function price(v) { v = num(v); if (v == null || v <= 0) return "€—"; v = eur(v); if (v >= 1) return "€" + v.toFixed(v >= 100 ? 2 : 4); const s = v.toFixed(20); const m = s.match(/^0\.(0*)(\d{4})/); if (!m) return "€" + v.toPrecision(4); const z = m[1].length; if (z < 3) return "€" + v.toFixed(z + 4); return "€0.0" + String(z).split("").map((c) => SUB[+c]).join("") + m[2]; }
   function hhmm(iso) { const t = Date.parse(iso || ""); if (!isFinite(t)) return ""; return new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: TZ }); }
   function ago(iso) { const t = Date.parse(iso || ""); if (!isFinite(t)) return ""; const s = Math.max(0, (Date.now() - t) / 1000); return s < 60 ? Math.round(s) + "s" : s < 3600 ? Math.round(s / 60) + "m" : s < 86400 ? Math.round(s / 3600) + "h" : Math.round(s / 86400) + "d"; }
   const short = (m) => m ? m.slice(0, 4) + "…" + m.slice(-4) : "";
@@ -208,7 +212,7 @@
       sub = "Executor · " + (tp ? "take profit " + esc((r.match(/\+\d+%/) || [""])[0]) : stop ? "stop −" + ((S && S.rules && S.rules.stop_pct) || 15) + "%" : esc(a.leader) + " sold · same exit") + " · " + hhmm(a.ts) + (a.tx ? " · " + txLink(a.tx) : "");
       right = '<b class="' + cls(a.gain) + '">' + sMoney(a.gain) + '</b><span class="' + cls(a.pct) + '">' + pct(a.pct) + "</span>";
     } else {
-      title = esc(a.text); sub = "Risk · " + (a.leader ? esc(a.leader) + " · " : "") + (a.symbol ? esc(a.symbol) + " · " : "") + hhmm(a.ts); right = "";
+      title = esc(txtEur(a.text)); sub = "Risk · " + (a.leader ? esc(a.leader) + " · " : "") + (a.symbol ? esc(a.symbol) + " · " : "") + hhmm(a.ts); right = "";
       return '<div class="fr rule' + nw + '"' + (a.mint ? ' data-mint="' + esc(a.mint) + '"' : "") + '><div class="ic"><span class="ti" style="background:#2a1d08;color:#ff9f0a">R</span></div><div class="m"><b style="white-space:normal">' + title + "</b><span>" + sub + '</span></div><div class="v">' + right + "</div></div>";
     }
     return '<div class="fr' + nw + '" data-pos="' + esc(a.pos || "") + '"><div class="ic">' + tokIcon(a.mint, sym) + av(a.leader) + '</div><div class="m"><b>' + title + "</b><span>" + sub + '</span></div><div class="v num">' + right + "</div></div>";
@@ -337,7 +341,7 @@
     for (const a of (S.activity || []).slice(0, 10)) {
       if (a.kind === "copies") lines.push({ ts: a.ts, tag: "executor", c: "#BF5AF2", txt: "buy " + esc(symOf(a)) + " " + money(a.size) + (a.lag != null ? " · +" + a.lag + "s" : "") + (a.tx ? " ✓" : "") });
       else if (a.kind === "exits") lines.push({ ts: a.ts, tag: "executor", c: "#BF5AF2", txt: "sell " + esc(symOf(a)) + ' <span class="' + cls(a.gain) + '">' + sMoney(a.gain) + " (" + pct(a.pct) + ")</span> · " + esc(exitName(a.reason)) });
-      else lines.push({ ts: a.ts, tag: "risk", c: "#FF6B81", txt: esc(String(a.text || "").slice(0, 70)) });
+      else lines.push({ ts: a.ts, tag: "risk", c: "#FF6B81", txt: esc(txtEur(String(a.text || "")).slice(0, 70)) });
     }
     lines.sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts));
     const tail = lines.slice(-7);
@@ -383,7 +387,7 @@
 
   /* ---------- ACTIVITY / ACCOUNT ---------- */
   function renderActivity() { $("a-sub").textContent = "tonight · copying " + S.tracked + " trader" + (S.tracked === 1 ? "" : "s") + " · " + behind(); setH("a-feed").v = feedHtml(S.activity, feedF, "act"); }
-  function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = isLive() ? "max " + r.ticket_pct + "% van saldo · max " + r.max_open + " open · min $" + (r.min_trade_usd || 2) + " · " + (r.sol_reserve || 0.02) + " SOL reserve" : r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = (isLive() && r.exit_text) ? r.exit_text : (isLive() ? "noodstop −" : "−") + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · verkoopt als trader verkoopt" + (isLive() && RAW.live_book ? " · stopt alles bij −$" + Number(RAW.live_book.loss_limit || 12.5).toFixed(2) : ""); renderPhantom(); renderDemo(); renderAppKey(); renderProfile(); }
+  function renderAccount() { const r = S.rules; $("ac-tr").textContent = fomoTracked() + " van top " + S.top_n + " gevolgd" + (S.public_n ? " + " + S.public_n + " publieke Solana-traders" : ""); $("ac-size").textContent = isLive() ? "max " + r.ticket_pct + "% van saldo · max " + r.max_open + " open · min " + money(r.min_trade_usd || 2) + " · " + (r.sol_reserve || 0.02) + " SOL reserve" : r.ticket_pct + "% · max " + r.max_open + " open"; $("ac-rules").textContent = (isLive() && r.exit_text) ? r.exit_text : (isLive() ? "noodstop −" : "−") + r.stop_pct + "% · 50% @+" + r.tp1_pct + "% · rest @+" + r.tp2_pct + "% · verkoopt als trader verkoopt" + (isLive() && RAW.live_book ? " · stopt alles bij −" + money(RAW.live_book.loss_limit || 12.5) : ""); renderPhantom(); renderDemo(); renderAppKey(); renderProfile(); }
   /* v41: profile header, range chart, cash card and positions (all from the book on screen) */
   function acSpan(r) { return { "24h": 86400e3, "7d": 7 * 86400e3, "30d": 30 * 86400e3 }[r] || Infinity; }
   function renderProfile() {
@@ -571,18 +575,18 @@
   function closeSheets() { $("ov").classList.add("hidden"); document.querySelectorAll(".sheet").forEach((s) => s.classList.add("hidden")); }
   function toast(t, s) { $("toast-t").textContent = t; $("toast-s").textContent = s || ""; const el = $("toast"); el.classList.remove("hidden"); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.add("hidden"), 3500); }
   const PADV = { dep: "", wd: "" };
-  function padShow(k) { const v = PADV[k]; setH(k + "-amt").v = esc(v ? "$" + v : "$0") + '<span class="caret"></span>'; const n = Number(v);
-    const go = $(k + "-go"); go.disabled = !(n > 0); go.textContent = (k === "dep" ? "Stort " : "Neem ") + (n > 0 ? money(n) + " " : "") + (k === "dep" ? "op demo" : "op van demo"); }
+  function padShow(k) { const v = PADV[k]; setH(k + "-amt").v = esc(v ? "€" + v : "€0") + '<span class="caret"></span>'; const n = Number(v);
+    const go = $(k + "-go"); go.disabled = !(n > 0); go.textContent = (k === "dep" ? "Stort " : "Neem ") + (n > 0 ? "€" + n.toFixed(2) + " " : "") + (k === "dep" ? "op demo" : "op van demo"); }
   function padKey(k, t) { let v = PADV[k]; if (t === "⌫") v = v.slice(0, -1); else if (t === ".") { if (!v.includes(".")) v = (v || "0") + "."; } else if (/^\d$/.test(t)) { if (/\.\d\d$/.test(v) || v.replace(".", "").length >= 8) return; v = v === "0" ? t : v + t; } PADV[k] = v; padShow(k); }
   function sendMove(k) {
-    let n = Math.round(Number(PADV[k]) * 100) / 100; if (!(n > 0) || !S || isLive()) return;
+    let n = Math.round(Number(PADV[k]) * FX * 100) / 100; if (!(n > 0) || !S || isLive()) return;  // € typed -> desk USD
     if (k === "wd") n = Math.min(n, Math.max(0, Math.floor(Number(S.cash || 0) * 100) / 100)); if (!(n > 0)) { toast("Niets vrij om op te nemen", "Geld in open posities blijft staan."); return; }
     if (canAct()) { sendMoveDirect(k, n); return; }
     const d = k === "dep" ? n : -n, bot = (RAW && RAW.bot) || botName(), cmd = (k === "dep" ? "demo_dep_" : "demo_wd_") + String(n).replace(".", "_");
     try { localStorage.setItem(MOVE_KEY, JSON.stringify({ d: d, base: Number(RAW.book.start_usd), t: Date.now() })); if (k === "dep") localStorage.setItem(START_KEY, "1"); } catch (e) {}
     if (bot) window.open("https://t.me/" + bot + "?start=" + cmd, "_blank", "noopener");
     closeSheets(); S = viewOf(RAW); renderAll();
-    toast((k === "dep" ? "Gestort: +" : "Opgenomen: -") + money(n) + " (demo)", bot ? "Tik in Telegram op Start om te bevestigen · ECHT GELD verandert niet" : "Stuur in Telegram: demo " + (k === "dep" ? "storten " : "opnemen ") + n);
+    toast((k === "dep" ? "Gestort: +" : "Opgenomen: -") + money(n) + " (demo)", bot ? "Tik in Telegram op Start om te bevestigen · ECHT GELD verandert niet" : "Stuur in Telegram: demo " + (k === "dep" ? "storten " : "opnemen ") + n + " (USD)");
   }
   async function sendMoveDirect(k, n) {
     const go = $(k + "-go"); if (go.disabled && sendMoveDirect.busy) return; sendMoveDirect.busy = true; go.disabled = true; go.textContent = "Bezig…";
@@ -720,6 +724,7 @@
     if (j && j.bot) { try { localStorage.setItem(BOT_KEY, j.bot); } catch (e) {} } else if (j && !j.bot && botName()) j = Object.assign({}, j, { bot: botName() });  // bot name blank ~1 min after a desk restart
     if (j && !j.action_url && actUrl.last && Date.now() - actUrl.lastT < 3 * 60e3) j = Object.assign({}, j, { action_url: actUrl.last });
     if (j && j.action_url) { actUrl.last = j.action_url; actUrl.lastT = Date.now(); }
+    if (j && j.fx && num(j.fx.usd_per_eur)) FX = Number(j.fx.usd_per_eur);
     RAW = j; S = viewOf(j); renderBookUI(); const age = (Date.now() - Date.parse(S.updatedAt || "")) / 1000; const b = $("error");
     if (!cached && isFinite(age) && age > 15 * 60) { b.textContent = "Gegevens zijn " + Math.round(age / 60) + " min oud. De watchdog herstart de desk."; b.classList.remove("hidden"); } else b.classList.add("hidden");
     renderAll();

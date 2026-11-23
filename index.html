@@ -9,14 +9,14 @@
   <meta name="apple-mobile-web-app-title" content="Trencher">
   <meta name="theme-color" content="#000000">
   <title>Trencher</title>
-  <link rel="manifest" href="manifest.json?v=48">
+  <link rel="manifest" href="manifest.json?v=49">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <link rel="preload" href="app.js?v=48" as="script">
-  <link rel="stylesheet" href="app.css?v=48">
+  <link rel="preload" href="app.js?v=49" as="script">
+  <link rel="stylesheet" href="app.css?v=49">
 </head>
 <body>
 <div id="app">
@@ -38,8 +38,8 @@
   <!-- HOME -->
   <main id="s-home" class="screen">
     <section class="hero">
-      <div class="bal num" id="l-bal">$0<span class="dec">.00</span></div>
-      <div class="sub-ch"><span id="l-ch" class="g num">▲ $0.00 (+0%)</span><span class="mult num" id="l-mult">1.00x</span><span class="modetag" id="l-mode">SIM</span></div>
+      <div class="bal num" id="l-bal">€0<span class="dec">.00</span></div>
+      <div class="sub-ch"><span id="l-ch" class="g num">▲ €0.00 (+0%)</span><span class="mult num" id="l-mult">1.00x</span><span class="modetag" id="l-mode">SIM</span></div>
       <div class="mut xs" id="h-wal"></div>
       <div class="l-copy"><span class="stack" id="l-stack"></span><span class="mut">copying</span><b id="l-n">0 traders</b><span class="mut" id="l-behind"></span><span class="mut" id="l-open">0 open</span></div>
       <div class="h-actions"><button type="button" class="pill-dep" id="h-dep-pill">Start demo</button>
@@ -94,7 +94,7 @@
   <!-- AGENTS (task chat) -->
   <main id="s-agents" class="screen hidden chat">
     <button type="button" class="back" data-go="bots" aria-label="terug"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <div class="c-head"><span class="gk" aria-hidden="true"></span><div><b>Grok Bot</b><div class="mut xs" id="c-sub">new task · Trencher · $0.00</div></div></div>
+    <div class="c-head"><span class="gk" aria-hidden="true"></span><div><b>Grok Bot</b><div class="mut xs" id="c-sub">new task · Trencher · €0.00</div></div></div>
     <div class="c-body" id="c-body"></div>
     <div class="c-input"><input type="text" id="c-in" placeholder="Give Grok Bot a task..." autocomplete="off"><button type="button" id="c-send" aria-label="verstuur">↑</button></div>
   </main>
@@ -113,13 +113,13 @@
   <main id="s-account" class="screen hidden">
     <button type="button" class="back" data-go="home" id="ac-back" aria-label="terug"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <div class="acc-h"><span class="pav" aria-hidden="true">T</span><div><b class="pname">Trencher</b><div class="mut sm" id="ac-handle">—</div><div class="mut xs" id="ac-sub">ECHT GELD + demo · Grok Bot</div></div></div>
-    <div class="ac-bal num" id="ac-bal">$—</div>
-    <div class="ac-ch num"><span id="ac-ch" class="g">+$0.00</span> <span class="mut" id="ac-chl">24h</span></div>
+    <div class="ac-bal num" id="ac-bal">€—</div>
+    <div class="ac-ch num"><span id="ac-ch" class="g">+€0.00</span> <span class="mut" id="ac-chl">24h</span></div>
     <div class="ptabs" id="ac-tf"><button type="button" data-a="24h" class="on">24h</button><button type="button" data-a="7d">7d</button><button type="button" data-a="30d">30d</button><button type="button" data-a="All">All</button></div>
     <svg id="ac-chart" class="ac-chart" viewBox="0 0 390 120" preserveAspectRatio="none"></svg>
     <div class="cashc">
-      <span class="cash-ic" aria-hidden="true">$</span>
-      <div class="cash-m"><span class="mut sm">Cash balance</span><b class="num" id="ac-cash">$—</b></div>
+      <span class="cash-ic" aria-hidden="true">€</span>
+      <div class="cash-m"><span class="mut sm">Cash balance</span><b class="num" id="ac-cash">€—</b></div>
       <button type="button" class="rbtn" id="ac-dep" aria-label="storten"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
       <button type="button" class="rbtn" id="ac-wd" aria-label="opnemen"><svg viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
@@ -177,7 +177,7 @@
   <!-- POSITION detail (full screen) -->
   <main id="s-pos" class="screen hidden">
     <button type="button" class="back" id="p-back" aria-label="terug"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <div class="bal mc num"><span id="p-mc">$—</span> <span class="mcl">MC</span></div>
+    <div class="bal mc num"><span id="p-mc">€—</span> <span class="mcl">MC</span></div>
     <div class="g sb num" id="p-since">—</div>
     <div class="p-who" id="p-who"></div>
     <div class="chart-wrap pchart"><svg id="p-chart" viewBox="0 0 390 300" preserveAspectRatio="none"></svg><div id="p-labels" class="c-labels"></div><div id="p-banner" class="banner-x hidden"></div></div>
@@ -196,7 +196,7 @@
   <section class="sheet hidden" id="sh-dep">
     <div class="grab"></div>
     <div class="sh-h"><span class="brand-dot"></span><b>Storten · demo</b><button type="button" class="x" data-x>✕</button></div>
-    <div class="amt" id="dep-amt">$100.00<span class="caret"></span></div>
+    <div class="amt" id="dep-amt">€100.00<span class="caret"></span></div>
     <div class="mut sm ctr"><span class="cardico"></span> Demo-geld · geen echt geld · ECHT GELD verandert niet</div>
     <div class="pad" id="dep-pad"><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button>.</button><button>0</button><button>⌫</button></div>
     <div class="mut xs ctr" id="dep-note">Typ een bedrag. Bevestigen gaat via de desk-bot in Telegram (tik daar op Start).</div>
@@ -206,14 +206,14 @@
     <div class="grab"></div>
     <div class="sh-h"><span class="brand-dot"></span><b>Opnemen · demo</b><button type="button" class="x" data-x>✕</button></div>
     <div class="mut sm ctr" style="margin:-4px 0 12px">Dit is een demo. Er wordt geen echt geld opgenomen.</div>
-    <div class="amt" id="wd-amt">$0<span class="caret"></span></div>
+    <div class="amt" id="wd-amt">€0<span class="caret"></span></div>
     <div class="pad" id="wd-pad"><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button>.</button><button>0</button><button>⌫</button></div>
-    <div class="mut xs ctr" id="wd-note">Max = vrij demo-saldo (geld in open posities blijft staan). Nooit onder $0.</div>
+    <div class="mut xs ctr" id="wd-note">Max = vrij demo-saldo (geld in open posities blijft staan). Nooit onder €0.</div>
     <div class="card list0">
       <div class="kv"><span>Van</span><b><span class="av xs" style="background:linear-gradient(135deg,#00D26A,#0A84FF)">T</span> @trencher</b></div>
       <div class="kv"><span><span class="cardico"></span> Naar</span><b class="mut">demo · geen echt geld</b></div>
       <div class="kv"><span>Grok Bot posities</span><b id="wd-pos">—</b></div>
-      <div class="kv"><span>Fee</span><b>$0.00</b></div>
+      <div class="kv"><span>Fee</span><b>€0.00</b></div>
     </div>
     <button type="button" class="btn-blue big" id="wd-go">Neem op van demo</button>
   </section>
@@ -228,11 +228,11 @@
   <section class="sheet hidden" id="sh-night">
     <div class="grab"></div>
     <div class="sh-h left"><span class="gk sm" aria-hidden="true"></span><b id="n-title">Night done</b><button type="button" class="x" data-x>✕</button></div>
-    <div class="amt left" id="n-bal">$0.00</div>
+    <div class="amt left" id="n-bal">€0.00</div>
     <div class="g sm b6" id="n-line">—</div>
     <div class="g2" id="n-grid"></div>
     <div id="n-tr"></div>
-    <div class="mut xs" style="margin-top:10px">SIM · demo. Nieuwe demo met $100: Telegram “demo reset”.</div>
+    <div class="mut xs" style="margin-top:10px">SIM · demo. Nieuwe demo met €100: Telegram “demo reset”.</div>
   </section>
   <section class="sheet hidden" id="sh-token">
     <div class="grab"></div>
@@ -248,13 +248,13 @@
     <div class="done-card">
       <div class="d-top"><span class="av" style="background:linear-gradient(135deg,#00D26A,#0A84FF)">T</span><div><b>@trencher</b><div class="mut xs">demo · Grok Bot</div></div><span class="ok big">✓</span></div>
       <div class="mut sm">Demo-resultaat · geen echte opname</div>
-      <div class="d-amt" id="d-amt">$0.00</div>
+      <div class="d-amt" id="d-amt">€0.00</div>
       <div class="sm b6" id="d-line">—</div>
       <div class="kv"><span>Gekopieerd</span><b id="d-tr">—</b></div>
       <button type="button" class="btn-grey wide" id="d-close">Sluiten</button>
     </div>
   </section>
 </div>
-<script src="app.js?v=48"></script>
+<script src="app.js?v=49"></script>
 </body>
 </html>
